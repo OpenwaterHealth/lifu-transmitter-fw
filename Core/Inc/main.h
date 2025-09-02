@@ -90,6 +90,8 @@ void set_reconfigure();
 #define LD_HB_GPIO_Port GPIOC
 #define GLOBAL_SCL_Pin GPIO_PIN_6
 #define GLOBAL_SCL_GPIO_Port GPIOB
+#define REF_CLK_Pin GPIO_PIN_8
+#define REF_CLK_GPIO_Port GPIOA
 #define RX_I2C_SDA_Pin GPIO_PIN_9
 #define RX_I2C_SDA_GPIO_Port GPIOC
 #define RX_I2C_SCL_Pin GPIO_PIN_0
@@ -151,7 +153,7 @@ extern CRC_HandleTypeDef hcrc;
 extern SPI_HandleTypeDef hspi1;
 // extern TIM_HandleTypeDef htim14;
 extern TIM_HandleTypeDef htim2;
-// extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim7;
 extern TIM_HandleTypeDef htim15;
 extern TIM_HandleTypeDef htim6;
@@ -161,11 +163,13 @@ extern UART_HandleTypeDef huart3;
 
 #define CALL_OUT_UART huart3
 #define CALL_IN_UART huart2
-#define CDC_TIMER htim7
+#define REF_CLK_TIMER htim1
+#define REF_CLK_CHANNEL TIM_CHANNEL_1
+#define CDC_TIMER htim6
 #define TRIGGER_TIMER htim15
 #define HIRES_TIMER htim2
 // #define LORES_TIMER htim3
-#define RESET_TIMER htim6
+#define RESET_TIMER htim7
 // #define TEMPERATURE_TIMER htim7
 
 extern I2C_HandleTypeDef* GLOBAL_I2C_DEVICE;

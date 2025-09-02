@@ -284,7 +284,7 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				id_words[0] = HAL_GetUIDw0();
 				id_words[1] = HAL_GetUIDw1();
 				id_words[2] = HAL_GetUIDw2();
-				uartResp->data_len = 16;
+				uartResp->data_len = 12;
 				uartResp->data = (uint8_t *)&id_words;
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);

@@ -26,6 +26,9 @@
 #include "usbd_cdc.h"
 
 /* USER CODE BEGIN Includes */
+#include "main.h"
+#include "uart_comms.h"
+#include "module_manager.h"
 
 /* USER CODE END Includes */
 
@@ -42,6 +45,7 @@ PCD_HandleTypeDef hpcd_USB_FS;
 void Error_Handler(void);
 
 /* USER CODE BEGIN 0 */
+extern volatile bool _usb_interrupt_flag;
 
 /* USER CODE END 0 */
 
@@ -78,7 +82,7 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
   /** Initializes the peripherals clock
   */
     PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
-    PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL;
+    PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
     {
       Error_Handler();
@@ -213,6 +217,13 @@ void HAL_PCD_SuspendCallback(PCD_HandleTypeDef *hpcd)
   USBD_LL_Suspend((USBD_HandleTypeDef*)hpcd->pData);
   /* Enter in STOP mode. */
   /* USER CODE BEGIN 2 */
+  if(get_device_role() == ROLE_MASTER)
+  {
+	  set_device_role(ROLE_SLAVE);
+	  set_configured(false);
+	  _usb_interrupt_flag = true;
+  }
+
   if (hpcd->Init.low_power_enable)
   {
     /* Set SLEEPDEEP bit and SleepOnExit of Cortex System Control Register. */
@@ -235,6 +246,13 @@ void HAL_PCD_ResumeCallback(PCD_HandleTypeDef *hpcd)
 {
 
   /* USER CODE BEGIN 3 */
+  if(get_device_role() != ROLE_MASTER)
+  {
+	  set_device_role(ROLE_MASTER);
+	  set_configured(false);
+	  _usb_interrupt_flag = true;
+  }
+
   if (hpcd->Init.low_power_enable)
   {
     /* Reset SLEEPDEEP bit of Cortex System Control Register. */
