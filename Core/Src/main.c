@@ -79,6 +79,7 @@ TIM_HandleTypeDef htim6;
 TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim15;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart2_rx;
@@ -118,6 +119,7 @@ static void MX_TIM2_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_TIM15_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -364,6 +366,7 @@ int main(void)
   MX_TIM15_Init();
   MX_USB_DEVICE_Init();
   MX_TIM6_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   SetPinsHighImpedance();
 
@@ -371,7 +374,6 @@ int main(void)
   deinit_trigger();
 
   HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(TRANSMIT_LED_GPIO_Port, TRANSMIT_LED_Pin, GPIO_PIN_SET);
 
   HAL_Delay(250); // wait for role to be set if connected to usb
 
@@ -1113,6 +1115,41 @@ static void MX_TIM15_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -1227,10 +1264,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOH_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, TRANSMIT_LED_Pin|TR4_EN_Pin|LD_HB_Pin|TX_RESET_L_Pin
-                          |TX_CW_EN_Pin|TR5_EN_Pin|RDY_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, TR1_EN_Pin|REFSEL_Pin|TR3_EN_Pin|HW_SW_CTRL_Pin
                           |TR2_EN_Pin|TR7_EN_Pin|TR6_EN_Pin, GPIO_PIN_RESET);
 
@@ -1238,15 +1271,24 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, TX1_CS_Pin|TX2_CS_Pin|TR8_EN_Pin|TX_STDBY_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, TR4_EN_Pin|LD_HB_Pin|TX_RESET_L_Pin|TX_CW_EN_Pin
+                          |TR5_EN_Pin|RDY_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : TRANSMIT_LED_Pin TR4_EN_Pin LD_HB_Pin TX_RESET_L_Pin
-                           TX_CW_EN_Pin TR5_EN_Pin RDY_Pin */
-  GPIO_InitStruct.Pin = TRANSMIT_LED_Pin|TR4_EN_Pin|LD_HB_Pin|TX_RESET_L_Pin
-                          |TX_CW_EN_Pin|TR5_EN_Pin|RDY_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pin : INT_Pin */
+  GPIO_InitStruct.Pin = INT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(INT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : GPIO_1_Pin TX1_SHUTZ_Pin RX_I2C_SDA_Pin PC1
+                           RX_I2C_SCL_Pin RX_RDY_Pin PC3 */
+  GPIO_InitStruct.Pin = GPIO_1_Pin|TX1_SHUTZ_Pin|RX_I2C_SDA_Pin|GPIO_PIN_1
+                          |RX_I2C_SCL_Pin|RX_RDY_Pin|GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : TR1_EN_Pin REFSEL_Pin TR3_EN_Pin HW_SW_CTRL_Pin
@@ -1271,6 +1313,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : TR4_EN_Pin LD_HB_Pin TX_RESET_L_Pin TX_CW_EN_Pin
+                           TR5_EN_Pin RDY_Pin */
+  GPIO_InitStruct.Pin = TR4_EN_Pin|LD_HB_Pin|TX_RESET_L_Pin|TX_CW_EN_Pin
+                          |TR5_EN_Pin|RDY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
   /*Configure GPIO pin : SYSTEM_RDY_Pin */
   GPIO_InitStruct.Pin = SYSTEM_RDY_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -1278,31 +1329,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(SYSTEM_RDY_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : INT_Pin */
-  GPIO_InitStruct.Pin = INT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(INT_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : RST_Pin */
-  GPIO_InitStruct.Pin = RST_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(RST_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : RX_I2C_SDA_Pin PC1 RX_I2C_SCL_Pin RX_RDY_Pin
-                           PC3 */
-  GPIO_InitStruct.Pin = RX_I2C_SDA_Pin|GPIO_PIN_1|RX_I2C_SCL_Pin|RX_RDY_Pin
-                          |GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
   /*Configure GPIO pins : TX2_SHUTZ_Pin POWER_GOOD_Pin */
   GPIO_InitStruct.Pin = TX2_SHUTZ_Pin|POWER_GOOD_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : RST_Pin */
+  GPIO_InitStruct.Pin = RST_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(RST_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

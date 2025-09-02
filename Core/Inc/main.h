@@ -60,8 +60,10 @@ void set_reconfigure();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define TRANSMIT_LED_Pin GPIO_PIN_13
-#define TRANSMIT_LED_GPIO_Port GPIOC
+#define INT_Pin GPIO_PIN_14
+#define INT_GPIO_Port GPIOC
+#define GPIO_1_Pin GPIO_PIN_13
+#define GPIO_1_GPIO_Port GPIOC
 #define TR1_EN_Pin GPIO_PIN_9
 #define TR1_EN_GPIO_Port GPIOB
 #define PDN_Pin GPIO_PIN_4
@@ -76,20 +78,18 @@ void set_reconfigure();
 #define TR3_EN_GPIO_Port GPIOB
 #define SYSTEM_RDY_Pin GPIO_PIN_2
 #define SYSTEM_RDY_GPIO_Port GPIOD
+#define TX1_SHUTZ_Pin GPIO_PIN_11
+#define TX1_SHUTZ_GPIO_Port GPIOC
 #define CALL_OUT_Pin GPIO_PIN_10
 #define CALL_OUT_GPIO_Port GPIOC
-#define LOCAL_SDA_Pin GPIO_PIN_7
-#define LOCAL_SDA_GPIO_Port GPIOB
+#define GLOBAL_SDA_Pin GPIO_PIN_7
+#define GLOBAL_SDA_GPIO_Port GPIOB
 #define HW_SW_CTRL_Pin GPIO_PIN_5
 #define HW_SW_CTRL_GPIO_Port GPIOB
 #define LD_HB_Pin GPIO_PIN_12
 #define LD_HB_GPIO_Port GPIOC
-#define INT_Pin GPIO_PIN_10
-#define INT_GPIO_Port GPIOA
-#define RST_Pin GPIO_PIN_9
-#define RST_GPIO_Port GPIOA
-#define LOCAL_SCL_Pin GPIO_PIN_6
-#define LOCAL_SCL_GPIO_Port GPIOB
+#define GLOBAL_SCL_Pin GPIO_PIN_6
+#define GLOBAL_SCL_GPIO_Port GPIOB
 #define RX_I2C_SDA_Pin GPIO_PIN_9
 #define RX_I2C_SDA_GPIO_Port GPIOC
 #define RX_I2C_SCL_Pin GPIO_PIN_0
@@ -122,10 +122,12 @@ void set_reconfigure();
 #define TR2_EN_GPIO_Port GPIOB
 #define TR7_EN_Pin GPIO_PIN_2
 #define TR7_EN_GPIO_Port GPIOB
-#define GLOBAL_SCL_Pin GPIO_PIN_10
-#define GLOBAL_SCL_GPIO_Port GPIOB
+#define LOCAL_SCL_Pin GPIO_PIN_10
+#define LOCAL_SCL_GPIO_Port GPIOB
 #define TR6_EN_Pin GPIO_PIN_13
 #define TR6_EN_GPIO_Port GPIOB
+#define RST_Pin GPIO_PIN_1
+#define RST_GPIO_Port GPIOA
 #define TX_STDBY_Pin GPIO_PIN_4
 #define TX_STDBY_GPIO_Port GPIOA
 #define SPI_MOSI_Pin GPIO_PIN_7
@@ -134,8 +136,8 @@ void set_reconfigure();
 #define TR5_EN_GPIO_Port GPIOC
 #define RDY_Pin GPIO_PIN_5
 #define RDY_GPIO_Port GPIOC
-#define GLOBAL_SDA_Pin GPIO_PIN_11
-#define GLOBAL_SDA_GPIO_Port GPIOB
+#define LOCAL_SDA_Pin GPIO_PIN_11
+#define LOCAL_SDA_GPIO_Port GPIOB
 #define EXT_Pin GPIO_PIN_12
 #define EXT_GPIO_Port GPIOB
 
