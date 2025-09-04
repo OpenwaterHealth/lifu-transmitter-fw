@@ -156,7 +156,8 @@ extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim7;
 extern TIM_HandleTypeDef htim15;
-extern TIM_HandleTypeDef htim6;
+extern TIM_HandleTypeDef htim16;
+extern LPTIM_HandleTypeDef hlptim1;
 
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
@@ -165,11 +166,11 @@ extern UART_HandleTypeDef huart3;
 #define CALL_IN_UART huart2
 #define REF_CLK_TIMER htim1
 #define REF_CLK_CHANNEL TIM_CHANNEL_1
-#define CDC_TIMER htim6
+#define CDC_TIMER htim7
 #define TRIGGER_TIMER htim15
 #define HIRES_TIMER htim2
-// #define LORES_TIMER htim3
-#define RESET_TIMER htim7
+#define LORES_TIMER htim16
+#define RESET_TIMER hlptim1
 // #define TEMPERATURE_TIMER htim7
 
 extern I2C_HandleTypeDef* GLOBAL_I2C_DEVICE;

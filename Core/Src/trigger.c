@@ -1,7 +1,6 @@
 #include "trigger.h"
-#include "stm32l4xx.h"
+#include "stm32l4xx_hal.h"
 #include "main.h"
-#include "thermistor.h"
 
  #include "jsmn.h"
 
@@ -147,15 +146,23 @@ static void Configure_TIMERS_Frequency(TIM_HandleTypeDef* htim, uint32_t frequen
         arr = 0xFFFF;
     }
 
-    // Reset and prepare TIM15
+    // Reset and prepare TIM16
+    __HAL_TIM_DISABLE_IT(htim, TIM_IT_UPDATE);
     __HAL_TIM_DISABLE(htim);
     __HAL_TIM_SET_COUNTER(htim, 0);
 
     htim->Instance->PSC = prescaler;
     htim->Instance->ARR = arr;
 
-    // Clear interrupt flags
+    // for TIM16, make sure CCR1 is valid to generate OC1REF edges
+    if (htim->Instance == TIM16) {
+        uint32_t ccr = (arr > 1U) ? 1U : 0U;
+        htim->Instance->CCR1 = ccr;
+    }
+
+    // Clear interrupt flags and force update
     __HAL_TIM_CLEAR_FLAG(htim, TIM_FLAG_UPDATE);
+    htim->Instance->EGR = TIM_EGR_UG;
 }
 
 
@@ -194,7 +201,7 @@ static void Configure_ONESHOT_Timer(TIM_HandleTypeDef* htim, uint16_t pulsewidth
 	    Error_Handler();
 	  }
 	  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_TRIGGER;
-	  sSlaveConfig.InputTrigger = TIM_TS_ITR1;
+	  sSlaveConfig.InputTrigger = TIM_TS_ITR2;
 	  if (HAL_TIM_SlaveConfigSynchro(htim, &sSlaveConfig) != HAL_OK)
 	  {
 	    Error_Handler();
@@ -340,7 +347,7 @@ void deinit_trigger(void)
 void init_trigger_pulse(OW_TimerData new_timerDataConfig) {
     memcpy((void *)&_timerDataConfig, &new_timerDataConfig, sizeof(OW_TimerData));
 
-    // Configure_TIMERS_Frequency(&LORES_TIMER, new_timerDataConfig.TriggerFrequencyHz, false);
+    Configure_TIMERS_Frequency(&LORES_TIMER, new_timerDataConfig.TriggerFrequencyHz, false);
 
     _timerDataConfig.TriggerState = TRIGGER_STATE_READY;
     _timerDataConfig.TriggerStatus = TRIGGER_STATUS_READY;
@@ -390,7 +397,7 @@ uint8_t start_trigger_pulse(void) {
     _trainCount = 0;
 
     Configure_ONESHOT_Timer(&TRIGGER_TIMER, _timerDataConfig.TriggerPulseWidthUsec);
-    // Configure_TIMERS_Frequency(&LORES_TIMER, _timerDataConfig.TriggerFrequencyHz, false);
+    Configure_TIMERS_Frequency(&LORES_TIMER, _timerDataConfig.TriggerFrequencyHz, false);
 
     __HAL_TIM_DISABLE(&HIRES_TIMER);
     __HAL_TIM_SET_COUNTER(&HIRES_TIMER, 0);
@@ -399,20 +406,22 @@ uint8_t start_trigger_pulse(void) {
 
     // Clear interrupt flags
     __HAL_TIM_CLEAR_FLAG(&HIRES_TIMER, TIM_FLAG_UPDATE);
-    // __HAL_TIM_CLEAR_FLAG(&LORES_TIMER, TIM_FLAG_UPDATE);
+    __HAL_TIM_CLEAR_FLAG(&LORES_TIMER, TIM_FLAG_UPDATE);
 
     __HAL_TIM_SET_COUNTER(&TRIGGER_TIMER, 0);  // Just in case
-    // __HAL_TIM_SET_COUNTER(&LORES_TIMER, 0);
+    __HAL_TIM_SET_COUNTER(&LORES_TIMER, 0);
     __HAL_TIM_SET_COUNTER(&HIRES_TIMER, 0);
 
-    // __HAL_TIM_ENABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
+    __HAL_TIM_ENABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
     __HAL_TIM_ENABLE_IT(&HIRES_TIMER, TIM_IT_UPDATE);
 
 
     // Start PWM
     HAL_TIM_PWM_Start(&TRIGGER_TIMER, TIM_CHANNEL_2);
-    // HAL_TIM_Base_Start_IT(&LORES_TIMER);
-	// HAL_TIM_Base_Start_IT(&TEMPERATURE_TIMER);
+
+    HAL_TIM_PWM_Start(&LORES_TIMER, TIM_CHANNEL_1);
+    HAL_TIM_Base_Start_IT(&LORES_TIMER);
+
     _timerDataConfig.TriggerStatus = TRIGGER_STATUS_RUNNING;
     return TRIGGER_STATUS_RUNNING;
 }
@@ -421,9 +430,9 @@ uint8_t stop_trigger_pulse(void) {
 	if(_timerDataConfig.TriggerStatus != TRIGGER_STATUS_RUNNING) return _timerDataConfig.TriggerStatus;
 
     HAL_TIM_PWM_Stop(&TRIGGER_TIMER, TIM_CHANNEL_2);
-    // HAL_TIM_Base_Stop_IT(&LORES_TIMER);
+    HAL_TIM_Base_Stop_IT(&LORES_TIMER);
     HAL_TIM_Base_Stop_IT(&HIRES_TIMER);
-	// HAL_TIM_Base_Stop_IT(&TEMPERATURE_TIMER);
+
     _timerDataConfig.TriggerStatus = TRIGGER_STATUS_READY;
     return TRIGGER_STATUS_READY;
 }
@@ -448,12 +457,14 @@ void TRIG_TIM2_IRQHandler(void) {
 	    pulsetrain_complete_callback(_trainCount, _timerDataConfig.TriggerPulseTrainCount);
 	    _pulseCount = 0;
 	    HAL_TIM_PWM_Start(&TRIGGER_TIMER, TIM_CHANNEL_2);
-	    // __HAL_TIM_ENABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
-	    // HAL_TIM_Base_Start_IT(&LORES_TIMER);
+	    __HAL_TIM_ENABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
+
+	    HAL_TIM_PWM_Start(&LORES_TIMER, TIM_CHANNEL_1);
+	    HAL_TIM_Base_Start_IT(&LORES_TIMER);
 	}
 }
 
-void TRIG_TIM3_IRQHandler(void) {
+void TRIG_TIM16_IRQHandler(void) {
 	if(_timerDataConfig.TriggerStatus != TRIGGER_STATUS_RUNNING) return;
 
     _pulseCount++;
@@ -464,8 +475,8 @@ void TRIG_TIM3_IRQHandler(void) {
 	else if(_pulseCount>=_timerDataConfig.TriggerPulseCount)
     {
 
-        // __HAL_TIM_DISABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
-        // HAL_TIM_Base_Stop_IT(&LORES_TIMER);
+        __HAL_TIM_DISABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
+        HAL_TIM_Base_Stop_IT(&LORES_TIMER);
         if(_timerDataConfig.TriggerPulseTrainInterval>0) {
 
             // Re-enable interrupts
@@ -484,8 +495,10 @@ void TRIG_TIM3_IRQHandler(void) {
 				HAL_TIM_PWM_Stop(&TRIGGER_TIMER, TIM_CHANNEL_2);
 				_pulseCount = 0;
 				HAL_TIM_PWM_Start(&TRIGGER_TIMER, TIM_CHANNEL_2);
-				// __HAL_TIM_ENABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
-				// HAL_TIM_Base_Start_IT(&LORES_TIMER);
+				__HAL_TIM_ENABLE_IT(&LORES_TIMER, TIM_IT_UPDATE);
+
+				HAL_TIM_PWM_Start(&LORES_TIMER, TIM_CHANNEL_1);
+				HAL_TIM_Base_Start_IT(&LORES_TIMER);
 				pulsetrain_complete_callback(_trainCount, _timerDataConfig.TriggerPulseTrainCount);
         	}
     	}

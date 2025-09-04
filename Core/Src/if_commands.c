@@ -375,9 +375,10 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			uartResp->reserved = cmd->reserved;
 			uartResp->data_len = 0;
 
-			__HAL_TIM_CLEAR_FLAG(&RESET_TIMER, TIM_FLAG_UPDATE);
-			__HAL_TIM_SET_COUNTER(&RESET_TIMER, 0);
-			if(HAL_TIM_Base_Start_IT(&RESET_TIMER) != HAL_OK){
+		    __HAL_LPTIM_CLEAR_FLAG(&RESET_TIMER, LPTIM_FLAG_ARRM | LPTIM_FLAG_CMPM |
+		                                          LPTIM_FLAG_EXTTRIG | LPTIM_FLAG_DOWN |
+		                                          LPTIM_FLAG_UP    | LPTIM_FLAG_ARROK);
+			if( HAL_LPTIM_Counter_Start_IT(&RESET_TIMER, 1500000) != HAL_OK){
 				uartResp->packet_type = OW_ERROR;
 			}
 			break;
@@ -389,9 +390,10 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 
 			_enter_dfu = true;
 
-			__HAL_TIM_CLEAR_FLAG(&RESET_TIMER, TIM_FLAG_UPDATE);
-			__HAL_TIM_SET_COUNTER(&RESET_TIMER, 0);
-			if(HAL_TIM_Base_Start_IT(&RESET_TIMER) != HAL_OK){
+		    __HAL_LPTIM_CLEAR_FLAG(&RESET_TIMER, LPTIM_FLAG_ARRM | LPTIM_FLAG_CMPM |
+		                                          LPTIM_FLAG_EXTTRIG | LPTIM_FLAG_DOWN |
+		                                          LPTIM_FLAG_UP    | LPTIM_FLAG_ARROK);
+			if( HAL_LPTIM_Counter_Start_IT(&RESET_TIMER, 1500000) != HAL_OK){
 				uartResp->packet_type = OW_ERROR;
 			}
 			break;

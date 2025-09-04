@@ -1,7 +1,7 @@
 #ifndef __TRIGGER_H
 #define __TRIGGER_H
 
-#include "stm32l4xx.h"
+#include "stm32l4xx_hal.h"
 #include <stdbool.h>
 
 typedef enum {
@@ -51,7 +51,7 @@ uint8_t get_trigger_mode(void);
 const char* get_trigger_mode_str(void);
 
 void TRIG_TIM2_IRQHandler(void);
-void TRIG_TIM3_IRQHandler(void);
+void TRIG_TIM16_IRQHandler(void);
 void print_OW_TimerData(const OW_TimerData *data);
 
 // Weak callback functions
