@@ -172,6 +172,7 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
 			uartResp->data = (uint8_t *)&id_words;
 			break;
 		case OW_CMD_GET_TEMP:
+			tx_temperature = Thermistor_ReadTemperature();
 			if (module_id == 0){
 				uartResp->id = cmd->id;
 				uartResp->command = cmd->command;
