@@ -23,7 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "i2c_master.h"
-#include "config_CDCE6214_10MHZ.h"
+#include "config_CDCE6214_10MHZ_ZDM.h"
 
 #include "tx7332.h"
 #include "usbd_cdc_if.h"
@@ -258,44 +258,54 @@ void ConfigureHIzPin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 
 static bool ConfigureClock()
 {
+	  int count = 0;
+	  uint16_t v = 0;
 
-  HAL_Delay(25);
-  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1000);
-  HAL_Delay(25);
-  I2C_write_CDCE6214_reg(0x67, 0x000F, 0x5020);
-  HAL_Delay(25);
+	  // reset
+	  HAL_GPIO_WritePin(PDN_GPIO_Port, PDN_Pin, GPIO_PIN_RESET);
+	  HAL_Delay(250);
+	  HAL_GPIO_WritePin(PDN_GPIO_Port, PDN_Pin, GPIO_PIN_SET);
+	  HAL_Delay(25);
+	  //I2C_write_CDCE6214_reg(0x67, 0x000F, 0x5020); // unlock eeprom
+	  HAL_Delay(25);
 
-  // printf("Configuring Clock chip\r\n");
-  // Calculate the number of elements in the array
-  // blur6214_64mhz_values
-  size_t num_elements = sizeof(cdce6214_v4_10mhz_values) / sizeof(uint32_t);
+	  // printf("Configuring Clock chip\r\n");
+	  // Calculate the number of elements in the array
+	  // blur6214_64mhz_values
+	  size_t num_elements = sizeof(cdce6214_v6_10mhz_values) / sizeof(uint32_t);
 
-  // Iterate through the array and split each uint32_t value into two uint16_t values
-  for (size_t i = 0; i < num_elements; i++)
-  {
-    uint32_t value = cdce6214_v4_10mhz_values[i];
+	  // Iterate through the array and split each uint32_t value into two uint16_t values
+	  for (size_t i = 0; i < num_elements; i++)
+	  {
+	    uint32_t value = cdce6214_v6_10mhz_values[i];
 
-    // Split the value into upper and lower words
-    uint16_t reg_addr = (uint16_t)(value >> 16); // Upper word is reg_addr
-    uint16_t reg_value = (uint16_t)value;        // Lower word is reg_value
+	    // Split the value into upper and lower words
+	    uint16_t reg_addr = (uint16_t)(value >> 16); // Upper word is reg_addr
+	    uint16_t reg_value = (uint16_t)value;        // Lower word is reg_value
 
-    // Print the split values
-    if (!I2C_write_CDCE6214_reg(0x67, reg_addr, reg_value))
-    {
-      // printf("failed Index %zu: reg_addr = 0x%04X, reg_value = 0x%04X\r\n", i, reg_addr, reg_value);
-      return false;
-    }
-    HAL_Delay(1);
-  }
-  HAL_Delay(50);
-  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1110);
-  HAL_Delay(50);
-  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1100);
-  HAL_Delay(10);
-  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1000);
-  HAL_Delay(10);
+	    // Print the split values
+	    if (!I2C_write_CDCE6214_reg(0x67, reg_addr, reg_value))
+	    {
+	      // printf("failed Index %zu: reg_addr = 0x%04X, reg_value = 0x%04X\r\n", i, reg_addr, reg_value);
+	      return false;
+	    }
+	    HAL_Delay(1);
+	  }
 
-  return true;
+	  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1110); // calibrate
+	  HAL_Delay(1);
+	  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1100); // calibrate
+
+	  for(count = 0; count < 10; count ++){   // check for lock
+		  HAL_Delay(50);
+		  v = I2C_read_CDCE6214_reg(0x67, 0x0007);
+		  if ((v & 0x01) == 0x01) {
+			  HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_RESET);
+			  break;
+		  }
+	  }
+
+	  return true;
 }
 
 static void Detect_MAX31875_Bus(void)
