@@ -92,7 +92,7 @@ DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 
-uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 0};
+uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 1};
 uint32_t id_words[3] = {0};
 
 // Define the pointers
