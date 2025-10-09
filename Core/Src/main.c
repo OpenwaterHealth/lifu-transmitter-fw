@@ -292,9 +292,9 @@ static bool ConfigureClock()
 	    HAL_Delay(1);
 	  }
 
-	  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1110); // calibrate
+	  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1130); // calibrate
 	  HAL_Delay(1);
-	  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1100); // calibrate
+	  I2C_write_CDCE6214_reg(0x67, 0x0000, 0x1120); // calibrate
 
 	  for(count = 0; count < 10; count ++){   // check for lock
 		  HAL_Delay(50);
