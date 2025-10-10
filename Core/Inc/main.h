@@ -156,7 +156,7 @@ extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim7;
 extern TIM_HandleTypeDef htim15;
-extern TIM_HandleTypeDef htim16;
+extern TIM_HandleTypeDef htim1;
 extern LPTIM_HandleTypeDef hlptim1;
 
 extern UART_HandleTypeDef huart2;
@@ -169,7 +169,7 @@ extern UART_HandleTypeDef huart3;
 #define CDC_TIMER htim7
 #define TRIGGER_TIMER htim15
 #define HIRES_TIMER htim2
-#define LORES_TIMER htim16
+#define LORES_TIMER htim1
 #define RESET_TIMER hlptim1
 // #define TEMPERATURE_TIMER htim7
 

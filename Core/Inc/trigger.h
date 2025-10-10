@@ -51,7 +51,7 @@ uint8_t get_trigger_mode(void);
 const char* get_trigger_mode_str(void);
 
 void TRIG_TIM2_IRQHandler(void);
-void TRIG_TIM16_IRQHandler(void);
+void TRIG_TIM1_IRQHandler(void);
 void print_OW_TimerData(const OW_TimerData *data);
 
 // Weak callback functions
