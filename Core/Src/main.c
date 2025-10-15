@@ -91,7 +91,7 @@ DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 
-uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 1};
+uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 2};
 uint32_t id_words[3] = {0};
 
 // Define the pointers
@@ -1426,6 +1426,8 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
   if (hlptim->Instance == RESET_TIMER.Instance) {
 	  // Stop the timer to prevent re-triggering
 	  HAL_LPTIM_Counter_Stop_IT(hlptim);
+
+	  delay_ms(200);
 
 	  if(_enter_dfu){
 		// jump to bootloader DFU

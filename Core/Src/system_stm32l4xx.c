@@ -193,6 +193,7 @@
   * @brief  Setup the microcontroller system.
   * @retval None
   */
+void (*SysMemBootJump)(void);
 
 void SystemInit(void)
 {
@@ -205,6 +206,33 @@ void SystemInit(void)
 #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
   SCB->CPACR |= ((3UL << 20U)|(3UL << 22U));  /* set CP10 and CP11 Full Access */
 #endif
+  if ( *((unsigned long *)0x20003FF0) == 0xDEADBEEF ) {
+     *((unsigned long *)0x20003FF0) =  0xCAFEFEED; // Reset our trigger
+     __disable_irq(); // Disable all global interrupts
+
+	 // Clear all pending interrupt flags in the Nested Vectored Interrupt Controller (NVIC).
+	 for (uint32_t i = 0; i < 8; i++) { // The number of ICER registers depends on the MCU
+		 NVIC->ICER[i] = 0xFFFFFFFF;
+		 NVIC->ICPR[i] = 0xFFFFFFFF;
+	 }
+
+	 // Disable and reset the SysTick timer
+	 SysTick->CTRL = 0;
+	 SysTick->LOAD = 0;
+	 SysTick->VAL = 0;
+
+	 // Step 3: Remap the system memory to the memory address `0x00000000`.
+	 // This is required on some STM32 families, though often handled internally
+	 // by the bootloader or on reset. For robustness, perform this step.
+	 __HAL_SYSCFG_REMAPMEMORY_SYSTEMFLASH();
+
+    __set_MSP(*((volatile uint32_t*)0x1FFF0000));
+                                                   // 0x1FFF7000 is "System Memory" start address for STM32 L4xx
+    SysMemBootJump = (void (*)(void)) (*(volatile uint32_t*) (0x1FFF0000 + 4));
+
+    SysMemBootJump();
+    while (1);
+  }
 }
 
 /**
