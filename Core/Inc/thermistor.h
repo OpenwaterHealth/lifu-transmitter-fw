@@ -22,9 +22,6 @@ float Thermistor_ReadTemperature(void);
 extern volatile float tx_temperature;
 extern volatile float ambient_temperature;
 
-extern volatile float tx_temperature_2;  // Temperature of the transmitter
-extern volatile float ambient_temperature_2;  // Ambient temperature
-
 void TEMP_TIM7_IRQHandler(void);
 
 #endif /* INC_THERMISTOR_H_ */

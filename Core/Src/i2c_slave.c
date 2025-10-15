@@ -20,9 +20,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DATA_BUFFER_SIZE 128
+
 uint8_t rx_buffer[I2C_BUFFER_SIZE];
 uint8_t tx_buffer[I2C_BUFFER_SIZE];
-uint8_t status_buffer[I2C_STATUS_SIZE];
+uint8_t return_buffer[I2C_BUFFER_SIZE];
 
 uint8_t tx_position = 0;  // 0 - status, 8 - data packet
 size_t tx_bytes = 0;
@@ -30,12 +32,11 @@ static uint8_t* send_buffer = 0;
 I2C_TX_Packet* data_available;
 
 I2C_TX_Packet ret_data;
-uint8_t rec_data_buffer[128] = {0};
+uint8_t rec_data_buffer[DATA_BUFFER_SIZE] = {0};
 
 I2C_TX_Packet tx_packet;
 I2C_TX_Packet rx_packet;
-I2C_STATUS_Packet _status_packet;
-I2C_STATUS_Packet* status_packet = &_status_packet;
+I2C_TX_Packet packet_to_send_to_master;
 
 __IO uint16_t rx_count = 0;
 __IO uint16_t tx_packet_count = 0;
@@ -62,14 +63,12 @@ void I2C_Slave_Init(uint8_t addr) {
 
   // clear header
   memset(tx_buffer, 0, I2C_BUFFER_SIZE);
-  memset(status_buffer, 0, I2C_STATUS_SIZE);
+  memset(return_buffer, 0, I2C_BUFFER_SIZE);
 
 
-  _status_packet.id = 00;
-  _status_packet.status = 0x00; // processing
-  _status_packet.cmd = 0x00;
-  _status_packet.reserved = 0;
-  _status_packet.data_len = 0;
+  packet_to_send_to_master.id = 00;
+  packet_to_send_to_master.cmd = 0x00;
+  packet_to_send_to_master.reserved = 0;
 
   if(HAL_I2C_EnableListen_IT(GLOBAL_I2C_DEVICE) != HAL_OK) {
 	  // Handle the error if reinitialization fails
@@ -90,26 +89,13 @@ void i2c_print_info() {
     printf("I2C Slave Addr: 0x%02x\r\n\r\n", (uint8_t)(GLOBAL_I2C_DEVICE->Init.OwnAddress1 >> 1));
 }
 
-
-void flash_led(void)
-{
-	HAL_GPIO_TogglePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin);
-	HAL_Delay(300);
-	HAL_GPIO_TogglePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin);
-	HAL_Delay(300);
-	HAL_GPIO_TogglePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin);
-	HAL_Delay(300);
-	HAL_GPIO_TogglePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin);
-	HAL_Delay(300);
-}
-
 void I2C_Process() {
 	if (!data_available) return;
 
 	UartPacket new_cmd;
 	UartPacket resp;
 
-	memset(rec_data_buffer, 0, 128);
+	memset(rec_data_buffer, 0, DATA_BUFFER_SIZE);
 
 	// convert command
 	new_cmd.id = data_available->id;
@@ -118,17 +104,13 @@ void I2C_Process() {
 	new_cmd.addr = data_available->reserved;
 	new_cmd.data_len = data_available->data_len;
 	new_cmd.data = rec_data_buffer;
-	if(data_available->pkt_len>0){
+	if(data_available->data_len>0){
 		memcpy(new_cmd.data, data_available->pData, data_available->data_len);
 	}
+	packet_to_send_to_master.id = data_available->id;
+	packet_to_send_to_master.cmd = data_available->cmd;
 
-
-	// Process command
-	status_packet->id = data_available->id;
-	status_packet->cmd = data_available->cmd;
-	status_packet->status = 0xFF;
-	status_packet->data_len = 0;
-
+	// clear data available buffer
 	data_available = NULL;
 
 	if((new_cmd.command & 0xF0) == 0x20)
@@ -141,7 +123,6 @@ void I2C_Process() {
 	}
 	else
 	{
-		// error
 		new_cmd.packet_type = OW_ERROR;
 	}
 
@@ -150,30 +131,24 @@ void I2C_Process() {
 	// convert response to i2c return
 	if(resp.packet_type != OW_ERROR)
 	{
-		status_packet->status = OW_SUCCESS;
-		ret_data.id = resp.id;
-		ret_data.cmd = resp.command;
-		ret_data.reserved = resp.reserved;
-		ret_data.data_len = resp.data_len;
-		ret_data.pData = resp.data;
-		set_transmit_buffer(&ret_data, data_available->id, data_available->cmd, status_packet->status);
+		packet_to_send_to_master.id = resp.id;
+		packet_to_send_to_master.cmd = resp.command;
+		packet_to_send_to_master.reserved = resp.packet_type;
+		packet_to_send_to_master.data_len = resp.data_len;
+		packet_to_send_to_master.pData = resp.data;
+		set_transmit_buffer(&packet_to_send_to_master);
 	}
 	else
 	{
-		status_packet->status = OW_ERROR;
-		set_transmit_buffer(NULL, data_available->id, data_available->cmd, status_packet->status);
+		set_transmit_buffer(NULL);
 	}
+	
 
 }
 
-bool set_transmit_buffer(I2C_TX_Packet* packet, uint16_t packet_id, uint8_t command, uint8_t status_code)
+bool set_transmit_buffer(I2C_TX_Packet* packet)
 {
 	bool ret = false;
-
-	_status_packet.cmd = command;
-	_status_packet.status = status_code;
-	_status_packet.data_len = 0;
-	_status_packet.id = packet_id;
 
 	memset(tx_buffer, 0, I2C_BUFFER_SIZE);
 	if(packet)
@@ -181,18 +156,17 @@ bool set_transmit_buffer(I2C_TX_Packet* packet, uint16_t packet_id, uint8_t comm
 		if(i2c_packet_toBuffer(packet, tx_buffer)>0)
 		{
 			// update tx_packet from this buffer
-			ret = i2c_packet_fromBuffer(tx_buffer, &tx_packet);
+			ret = i2c_packet_fromBuffer(tx_buffer, packet);
 		}
 	}else{
-		tx_packet.id = packet_id;
-		tx_packet.cmd = command;
-		tx_packet.reserved = _status_packet.reserved;
-		tx_packet.data_len = 0;
+		tx_packet.id = packet->id;
+		tx_packet.cmd = packet->cmd;
+		tx_packet.reserved = packet->reserved;
 		tx_packet.pData = NULL;
 		if(i2c_packet_toBuffer(&tx_packet, tx_buffer)>0) ret = true;
 	}
 	if(!ret){
-		_status_packet.status = OW_INVALID_PACKET;
+		packet->reserved = OW_INVALID_PACKET;
 	}
 	return ret;
 }
@@ -235,11 +209,8 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		tx_bytes = 0;
 		if(tx_position == 0)
 		{
-			// read status
-			_status_packet.data_len = tx_packet.pkt_len;
-			tx_bytes = i2c_status_packet_toBuffer(status_packet, status_buffer);  // update status packet
-			//i2c_status_packet_print(status_packet);
-			send_buffer = status_buffer;
+			tx_bytes = i2c_packet_toBuffer(&packet_to_send_to_master, return_buffer);
+			send_buffer = return_buffer;
 		}else{
 			// read buffer
 			tx_bytes = tx_packet.pkt_len;
@@ -296,10 +267,12 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 			rx_count = rx_buffer[0];
 			is_first_byte_received=0;
 			// process data
-			i2c_packet_fromBuffer(rx_buffer, &rx_packet);
-			_status_packet.id = rx_packet.id;
-			_status_packet.cmd = rx_packet.cmd;
-			_status_packet.status = 0x00;
+			if (!i2c_packet_fromBuffer(rx_buffer, &rx_packet))
+			{
+				Error_Handler();
+			}
+			packet_to_send_to_master.id = rx_packet.id;
+			packet_to_send_to_master.cmd = rx_packet.cmd;
 			// printBuffer(rx_buffer, rx_count);
 			// process or send for processing
 			data_available = &rx_packet;

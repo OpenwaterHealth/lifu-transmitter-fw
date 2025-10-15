@@ -16,9 +16,6 @@ static float pullUpResistance;        // Pull-up resistance value
 volatile float tx_temperature = 0.0f;
 volatile float ambient_temperature = 0.0f;
 
-volatile float tx_temperature_2 = 0.0f;
-volatile float ambient_temperature_2 = 0.0f;
-
 // Initialize the thermistor
 void Thermistor_Start(ADC_HandleTypeDef *hadc, float vRef, float rPullUp)
 {
