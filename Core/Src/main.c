@@ -49,6 +49,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define TOGGLE_INTERVAL 500  // Toggle every 500ms
+#define TEMPERATURE_INTERVAL 1000 // Toggle every 1000ms
 
 #define SYSTEM_MEMORY_BASE 0x1FF0F800  // Bootloader start address for STM32F072
 #define DEBOUNCE_DELAY_MS 10
@@ -358,7 +359,8 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
-  uint32_t last_toggle_time = HAL_GetTick(); // Store the initial time
+  uint32_t last_led_toggle_time = HAL_GetTick(); // Store the initial time
+  uint32_t last_temp_toggle_time = HAL_GetTick();
   uint32_t current_time = 0;
 
 
@@ -540,10 +542,17 @@ int main(void)
 		}
 	}
 
-	if ((current_time - last_toggle_time) >= TOGGLE_INTERVAL) {
+	if ((current_time - last_led_toggle_time) >= TOGGLE_INTERVAL) {
 		HAL_GPIO_TogglePin(LD_HB_GPIO_Port, LD_HB_Pin);
-		last_toggle_time = current_time; // Update the last toggle time
+		last_led_toggle_time = current_time; // Update the last toggle time
 	}
+
+  if ((current_time - last_temp_toggle_time) >= TEMPERATURE_INTERVAL) {
+    tx_temperature = Thermistor_ReadTemperature();
+    ambient_temperature = MAX31875_ReadTemperature();
+    last_temp_toggle_time = current_time; // Update the last toggle time
+  }
+  
   }
   /* USER CODE END 3 */
 }

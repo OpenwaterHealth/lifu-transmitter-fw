@@ -1,3 +1,7 @@
 /Debug/
 /Release/
 /SEMIHOST/
+
+# STM32CubeIDE local machine files
+.settings/*
+*.launch

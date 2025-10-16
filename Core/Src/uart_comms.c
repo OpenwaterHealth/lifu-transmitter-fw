@@ -736,9 +736,6 @@ void pulsetrain_complete_callback(uint32_t curr_count, uint32_t total_count) {
 		int tx_temp_int = (int)(tx_temperature * 10);  // e.g. 32.6 → 326
 		int amb_temp_int = (int)(ambient_temperature * 10);  // e.g. 32.6 → 326
 
-        int tx_temp_int_2 = (int)(tx_temperature_2 * 10);  // e.g. 32.6 → 326
-        int amb_temp_int_2 = (int)(ambient_temperature_2 * 10);
-
         // int tx2_temp_int = (int)(tx2_temperature * 10);  // e.g. 32.6 → 326
         // int amb2_temp_int = (int)(ambient2_temperature * 10);  //
 
@@ -748,20 +745,14 @@ void pulsetrain_complete_callback(uint32_t curr_count, uint32_t total_count) {
             "MODE:%s,"
             "PULSE_TRAIN:[%lu/%lu],"
             "TEMP_TX:%d.%d,"
-            "TEMP_AMBIENT:%d.%d,"
-            "TEMP_TX_2:%d.%d,"
-            "TEMP_AMBIENT_2:%d.%d",
+            "TEMP_AMBIENT:%d.%d,",
 			get_trigger_mode_str(),
             (unsigned long)curr_count,
             (unsigned long)total_count,
 			tx_temp_int/10,
 			abs(tx_temp_int % 10),
 			amb_temp_int/10,
-			abs(amb_temp_int % 10),
-            tx_temp_int_2/10,
-            abs(tx_temp_int_2 % 10),
-            amb_temp_int_2/10,
-            abs(amb_temp_int_2 % 10)
+			abs(amb_temp_int % 10)
         );
 
 
