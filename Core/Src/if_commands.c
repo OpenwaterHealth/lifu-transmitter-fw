@@ -420,11 +420,11 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				uartResp->reserved = cmd->reserved;
 				uartResp->data_len = 0;
 
-		    __HAL_LPTIM_CLEAR_FLAG(&RESET_TIMER, LPTIM_FLAG_ARRM | LPTIM_FLAG_CMPM |
-		                                          LPTIM_FLAG_EXTTRIG | LPTIM_FLAG_DOWN |
-		                                          LPTIM_FLAG_UP    | LPTIM_FLAG_ARROK);
-			if( HAL_LPTIM_Counter_Start_IT(&RESET_TIMER, 1500000) != HAL_OK){
-					uartResp->packet_type = OW_ERROR;
+				__HAL_LPTIM_CLEAR_FLAG(&RESET_TIMER, LPTIM_FLAG_ARRM | LPTIM_FLAG_CMPM |
+													  LPTIM_FLAG_EXTTRIG | LPTIM_FLAG_DOWN |
+													  LPTIM_FLAG_UP    | LPTIM_FLAG_ARROK);
+				if( HAL_LPTIM_Counter_Start_IT(&RESET_TIMER, 1500000) != HAL_OK){
+						uartResp->packet_type = OW_ERROR;
 				}
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);

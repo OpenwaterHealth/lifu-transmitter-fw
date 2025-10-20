@@ -1436,14 +1436,11 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
 	  // Stop the timer to prevent re-triggering
 	  HAL_LPTIM_Counter_Stop_IT(hlptim);
 
-	  delay_ms(200);
-
 	  if(_enter_dfu){
 		// jump to bootloader DFU
 		// 16k SRAM in address 0x2000 0000 - 0x2000 3FFF
 		*((unsigned long *)0x20003FF0) = 0xDEADBEEF;
 	  }
-
 
 	  MX_USB_DEVICE_DeInit();
 
