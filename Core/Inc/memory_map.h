@@ -158,7 +158,7 @@
 #define APPLICATION_ADDRESS2       			((uint32_t)0x08020000)
 
 #define SRAM_BASE_ADDRESS       			((uint32_t)0x20000000) // SRAM1
-#define SRAM_SIZE			       			((uint32_t)0x10000) // 64KB
+#define SRAM_SIZE			       			((uint32_t)0xC000) // 48KB
 
 #ifdef __cplusplus
 }
