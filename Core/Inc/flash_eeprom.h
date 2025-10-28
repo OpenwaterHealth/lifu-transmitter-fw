@@ -8,7 +8,7 @@
 #ifndef INC_FLASH_EEPROM_H_
 #define INC_FLASH_EEPROM_H_
 
-#include "stm32l4xx.h"
+#include "stm32l4xx_hal.h"
 #include "memory_map.h"
 
 

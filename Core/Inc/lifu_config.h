@@ -15,7 +15,7 @@ extern "C" {
 #define LIFU_MAGIC   (0x4C494655UL)  // 'LIFU'
 #define LIFU_VER     (0x00010002UL)  // bump if layout changes
 
-// Flash layout info: one 2KB page at 0x0801F000
+// Flash layout info: one 2KB page at 0x803F000
 #define LIFU_CFG_PAGE_ADDR      (ADDR_FLASH_PAGE_126)
 #define LIFU_CFG_PAGE_END       (ADDR_FLASH_PAGE_127)
 #define LIFU_CFG_PAGE_SIZE      (2048U)

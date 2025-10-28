@@ -55,9 +55,6 @@ static void lifu_cfg_make_defaults(lifu_cfg_t *dst)
     dst->magic      = LIFU_MAGIC;
     dst->version    = LIFU_VER;
     dst->seq        = 0;
-    dst->hv_settng  = 0;   // uint16_t now
-    dst->hv_enabled = 0;
-    dst->auto_on    = 0;
 
     dst->json[0]    = '\0';
     if (LIFU_CFG_JSON_MAX > 1U) {
@@ -102,7 +99,7 @@ static HAL_StatusTypeDef lifu_cfg_writeback(void)
     lifu_cfg_normalize_json(&g_cfg);
     g_cfg.crc = lifu_cfg_calc_crc(&g_cfg);
 
-    // Erase page [ADDR_FLASH_PAGE_62 .. ADDR_FLASH_PAGE_63)
+    // Erase page [ADDR_FLASH_PAGE_126 .. ADDR_FLASH_PAGE_127)
     st = Flash_Erase(LIFU_CFG_PAGE_ADDR, LIFU_CFG_PAGE_END);
     if (st != HAL_OK) {
         return st;
@@ -171,10 +168,6 @@ HAL_StatusTypeDef lifu_cfg_save(const lifu_cfg_t *new_cfg)
 
     g_cfg.magic      = LIFU_MAGIC;
     g_cfg.version    = LIFU_VER;
-
-    g_cfg.hv_settng  = new_cfg->hv_settng;
-    g_cfg.hv_enabled = new_cfg->hv_enabled;
-    g_cfg.auto_on    = new_cfg->auto_on;
 
     // Copy JSON safely. Caller might not have padded or '\0' at the end.
     memcpy(g_cfg.json, new_cfg->json, LIFU_CFG_JSON_MAX);
