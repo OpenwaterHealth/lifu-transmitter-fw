@@ -163,7 +163,7 @@ HAL_StatusTypeDef lifu_cfg_save(const lifu_cfg_t *new_cfg)
     lifu_cfg_ensure_loaded();
 
     // Copy caller-updated fields into our working config.
-    // We *trust* their chosen values for hv_settng/hv_enabled/auto_on/json.
+    // We *trust* their chosen values for json.
     // We IGNORE their seq/crc/magic/version and regenerate those.
 
     g_cfg.magic      = LIFU_MAGIC;

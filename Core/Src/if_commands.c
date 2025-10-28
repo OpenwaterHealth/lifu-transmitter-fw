@@ -16,6 +16,7 @@
 #include "tx7332.h"
 #include "demo.h"
 #include "thermistor.h"
+#include "lifu_config.h"
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -265,6 +266,7 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
 static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 {
 	uint8_t module_id = 0;
+	lifu_cfg_t cfg;
 
 	switch (cmd->command)
 	{
@@ -447,6 +449,26 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				if(HAL_LPTIM_Counter_Start_IT(&RESET_TIMER, 1500000) != HAL_OK){
 					uartResp->packet_type = OW_ERROR;
 				}
+			} else {
+				process_i2c_forward(uartResp, cmd, module_id);
+			}
+			break;
+		case OW_CMD_FLASH_WRITE:
+			module_id = ModuleManager_GetModuleIndex(cmd->addr);
+			if (module_id == 0x00){
+				uartResp->command = cmd->command;
+				uartResp->addr = cmd->addr;
+				uartResp->reserved = cmd->reserved;
+				uartResp->data_len = 0;
+
+				if(lifu_cfg_save((const lifu_cfg_t *)&cfg)!= HAL_OK){
+					printf("Failed to save config\r\n");
+				}
+
+				// if(!lifu_config_flash_write((LifuConfig *)cmd->data)){
+				// 	uartResp->packet_type = OW_ERROR;
+
+				// }
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);
 			}
