@@ -48,7 +48,7 @@ HAL_StatusTypeDef Flash_Erase(uint32_t start_address, uint32_t end_address) {
     }
 
     erase_init.TypeErase = FLASH_TYPEERASE_PAGES;
-    // erase_init.PageAddress = start_address;
+    erase_init.Banks = FLASH_BANK_1;
     erase_init.Page = start_address;
     erase_init.NbPages = (end_address - start_address) / FLASH_PAGE_SIZE;
 

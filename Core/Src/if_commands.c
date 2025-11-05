@@ -461,6 +461,10 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				uartResp->reserved = cmd->reserved;
 				uartResp->data_len = 0;
 
+				memcpy(cfg.json, cmd->data, cmd->data_len);
+
+				// convert json data to lifu_cfg_t
+				
 				if(lifu_cfg_save((const lifu_cfg_t *)&cfg)!= HAL_OK){
 					printf("Failed to save config\r\n");
 				}
