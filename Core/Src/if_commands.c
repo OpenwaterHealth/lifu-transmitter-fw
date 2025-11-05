@@ -461,7 +461,7 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				uartResp->reserved = cmd->reserved;
 				uartResp->data_len = 0;
 
-				memcpy(cfg.json, cmd->data, cmd->data_len);
+				memcpy(cfg.json, cmd->data, sizeof(cfg.json));
 
 				// convert json data to lifu_cfg_t
 				
@@ -473,6 +473,22 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				// 	uartResp->packet_type = OW_ERROR;
 
 				// }
+			} else {
+				process_i2c_forward(uartResp, cmd, module_id);
+			}
+			break;
+		case OW_CMD_FLASH_READ:
+			module_id = ModuleManager_GetModuleIndex(cmd->addr);
+			if (module_id == 0x00){
+				uartResp->command = cmd->command;
+				uartResp->addr = cmd->addr;
+				uartResp->reserved = cmd->reserved;
+				// uartResp->data_len = 0;
+				
+				const lifu_cfg_t *current_cfg = lifu_cfg_get();
+
+				uartResp->data_len = strlen(current_cfg->json);
+				uartResp->data = (uint8_t *)current_cfg->json;
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);
 			}

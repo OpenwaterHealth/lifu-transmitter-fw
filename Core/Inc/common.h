@@ -70,6 +70,7 @@ typedef enum {
 	OW_CMD_NOP = 0x0E,
 	OW_CMD_RESET = 0x0F,
 	OW_CMD_FLASH_WRITE = 0x10,
+	OW_CMD_FLASH_READ = 0x11,
 } UstxGlobalCommands;
 
 typedef enum {
@@ -112,15 +113,5 @@ typedef struct  {
 	uint8_t* data;
 	uint16_t crc;
 } UartPacket;
-
-// typedef struct  {
-// 	uint32_t magic_num;
-// 	uint8_t reserved;
-// 	uint8_t reserved1;
-// 	uint8_t reserved2;
-// 	uint16_t data_len;
-// 	uint8_t* data;
-// 	uint16_t crc;
-// } LifuConfig;
 
 #endif /* INC_COMMON_H_ */
