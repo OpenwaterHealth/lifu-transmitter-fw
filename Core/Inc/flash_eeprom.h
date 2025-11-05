@@ -13,8 +13,8 @@
 
 
 /* Function prototypes */
-HAL_StatusTypeDef Flash_Write(uint32_t address, uint32_t* data, uint32_t size);
-HAL_StatusTypeDef Flash_Read(uint32_t address, uint32_t* data, uint32_t size);
+HAL_StatusTypeDef Flash_Write(uint32_t address, const void *src, uint32_t size_bytes);
+HAL_StatusTypeDef Flash_Read(uint32_t address, void *dst, uint32_t size_bytes);
 HAL_StatusTypeDef Flash_Erase(uint32_t start_address, uint32_t end_address);
 
 

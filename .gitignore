@@ -4,4 +4,5 @@
 
 # STM32CubeIDE local machine files
 .settings/*
+.vscode/*
 *.launch

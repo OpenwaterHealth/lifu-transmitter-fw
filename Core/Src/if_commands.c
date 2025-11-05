@@ -25,7 +25,6 @@
 extern uint8_t FIRMWARE_VERSION_DATA[3];
 extern bool _enter_dfu;
 
-extern int tx_count;
 extern TX7332 transmitters[2];
 extern bool async_enabled;
 
@@ -423,11 +422,11 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				uartResp->reserved = cmd->reserved;
 				uartResp->data_len = 0;
 
-		    __HAL_LPTIM_CLEAR_FLAG(&RESET_TIMER, LPTIM_FLAG_ARRM | LPTIM_FLAG_CMPM |
-		                                          LPTIM_FLAG_EXTTRIG | LPTIM_FLAG_DOWN |
-		                                          LPTIM_FLAG_UP    | LPTIM_FLAG_ARROK);
-			if( HAL_LPTIM_Counter_Start_IT(&RESET_TIMER, 1500000) != HAL_OK){
-					uartResp->packet_type = OW_ERROR;
+				__HAL_LPTIM_CLEAR_FLAG(&RESET_TIMER, LPTIM_FLAG_ARRM | LPTIM_FLAG_CMPM |
+													  LPTIM_FLAG_EXTTRIG | LPTIM_FLAG_DOWN |
+													  LPTIM_FLAG_UP    | LPTIM_FLAG_ARROK);
+				if( HAL_LPTIM_Counter_Start_IT(&RESET_TIMER, 1500000) != HAL_OK){
+						uartResp->packet_type = OW_ERROR;
 				}
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);
@@ -719,6 +718,16 @@ static void TX7332_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 		}else{
 			process_i2c_forward(uartResp, cmd, module_id);
 		}
+		break;
+	case OW_TX7332_DEVICE_COUNT:
+	{
+		uint8_t temp_module_count = get_module_count();
+		uartResp->command = OW_TX7332_DEVICE_COUNT;
+		uartResp->addr = 0;
+		uartResp->reserved = 0;
+		uartResp->data = &temp_module_count;
+		uartResp->data_len = 1;
+	}
 		break;
 	case OW_TX7332_RESET:
 		uartResp->command = OW_TX7332_RESET;

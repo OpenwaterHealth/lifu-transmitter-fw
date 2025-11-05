@@ -29,6 +29,7 @@
 #include "usbd_cdc_if.h"
 #include "uart_comms.h"
 #include "module_manager.h"
+#include "lifu_config.h"
 #include "trigger.h"
 #include "i2c_slave.h"
 #include "thermistor.h"
@@ -92,7 +93,7 @@ DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 
-uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 2};
+uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 3};
 uint32_t id_words[3] = {0};
 
 // Define the pointers
@@ -103,6 +104,7 @@ volatile bool _enter_dfu = false;
 volatile bool _usb_interrupt_flag = false;
 TX7332 transmitters[TX_PER_MODULE];
 
+static lifu_cfg_t *cfg;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -405,6 +407,8 @@ int main(void)
 
   // setup default
   deinit_trigger();
+
+  cfg = (lifu_cfg_t *)lifu_cfg_get();
 
   HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_SET);
 
@@ -1436,14 +1440,11 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
 	  // Stop the timer to prevent re-triggering
 	  HAL_LPTIM_Counter_Stop_IT(hlptim);
 
-	  delay_ms(200);
-
 	  if(_enter_dfu){
 		// jump to bootloader DFU
 		// 16k SRAM in address 0x2000 0000 - 0x2000 3FFF
 		*((unsigned long *)0x20003FF0) = 0xDEADBEEF;
 	  }
-
 
 	  MX_USB_DEVICE_DeInit();
 

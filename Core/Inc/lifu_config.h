@@ -1,7 +1,7 @@
 #ifndef LIFU_CONFIG_H
 #define LIFU_CONFIG_H
 
-#include "stm32l4xx_hal.h"
+#include "stm32l443xx.h"
 #include "flash_eeprom.h"
 #include "memory_map.h"
 #include <stdint.h>
