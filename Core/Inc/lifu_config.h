@@ -15,20 +15,17 @@ extern "C" {
 #define LIFU_MAGIC   (0x4C494655UL)  // 'LIFU'
 #define LIFU_VER     (0x00010002UL)  // bump if layout changes
 
-// Flash layout info: one 2KB page at 0x803F000
+// Flash layout info: one 2KB page at 0x0803F800
 #define LIFU_CFG_PAGE_SIZE      (2048U)
 #define LIFU_CFG_PAGE_ADDR      (ADDR_FLASH_PAGE_127)
-#define LIFU_CFG_PAGE_END       (ADDR_FLASH_PAGE_127 + LIFU_CFG_PAGE_SIZE)
+#define LIFU_CFG_PAGE_END       (ADDR_FLASH_END_ADDRESS)
 
 // magic(4) + version(4) + seq(4) = 12 bytes
-#define LIFU_CFG_HEADER_SIZE    (12U)
-
-// CRC at end is 2 bytes
-#define LIFU_CFG_CRC_SIZE       (2U)
+#define LIFU_CFG_HEADER_SIZE    (4*4U)
 
 // The rest of the page is JSON storage (must include '\0'):
-// 2048 - 12 - 2 = 2034
-#define LIFU_CFG_JSON_MAX       (LIFU_CFG_PAGE_SIZE - LIFU_CFG_HEADER_SIZE - LIFU_CFG_CRC_SIZE)
+// 2048 - 16 = 2032 bytes
+#define LIFU_CFG_JSON_MAX       (LIFU_CFG_PAGE_SIZE - LIFU_CFG_HEADER_SIZE)
 // -> 2034 bytes
 
 // Persistent config blob that exactly fills one flash page.
@@ -36,13 +33,10 @@ typedef struct __attribute__((packed, aligned(4))) {
     uint32_t magic;        // LIFU_MAGIC
     uint32_t version;      // LIFU_VER
     uint32_t seq;          // monotonic counter
-    // uint16_t hv_settng;    // persisted scalar (user units)
-    // uint8_t  hv_enabled;   // 0/1
-    // uint8_t  auto_on;      // 0/1
+    uint16_t crc;          // CRC16-CCITT over bytes [0 .. offsetof(crc)-1]
+    uint16_t reserved;     // padding for alignment
 
     char     json[LIFU_CFG_JSON_MAX]; // NUL-terminated text blob
-
-    uint16_t crc;          // CRC16-CCITT over bytes [0 .. offsetof(crc)-1]
 } lifu_cfg_t;
 
 // Sanity checks for layout
