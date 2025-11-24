@@ -460,7 +460,8 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				uartResp->reserved = cmd->reserved;
 				uartResp->data_len = 0;
 
-				memcpy(cfg.json, cmd->data, sizeof(cfg.json));
+				memset(cfg.json, 0, LIFU_CFG_JSON_MAX); // clear any old data
+				memcpy(cfg.json, cmd->data, cmd->data_len);
 
 				// convert json data to lifu_cfg_t
 				
@@ -486,7 +487,7 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				
 				const lifu_cfg_t *current_cfg = lifu_cfg_get();
 
-				uartResp->data_len = strlen(current_cfg->json);
+				uartResp->data_len = strnlen(current_cfg->json, LIFU_CFG_JSON_MAX);
 				uartResp->data = (uint8_t *)current_cfg->json;
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);

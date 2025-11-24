@@ -169,6 +169,9 @@ HAL_StatusTypeDef lifu_cfg_save(const lifu_cfg_t *new_cfg)
     g_cfg.magic      = LIFU_MAGIC;
     g_cfg.version    = LIFU_VER;
 
+    // Clear out old json just in case
+    memset(g_cfg.json, 0, LIFU_CFG_JSON_MAX);
+
     // Copy JSON safely. Caller might not have padded or '\0' at the end.
     memcpy(g_cfg.json, new_cfg->json, LIFU_CFG_JSON_MAX);
     g_cfg.json[LIFU_CFG_JSON_MAX - 1U] = '\0';
