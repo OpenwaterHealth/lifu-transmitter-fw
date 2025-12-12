@@ -399,6 +399,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM7_Init();
   MX_TIM15_Init();
+  MX_USB_DEVICE_Init();
   MX_USART1_UART_Init();
   MX_LPTIM1_Init();
   MX_LPTIM2_Init();
@@ -613,6 +614,7 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_MSI, RCC_MCODIV_2);
 }
 
 /**

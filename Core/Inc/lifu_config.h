@@ -21,14 +21,12 @@ extern "C" {
 #define LIFU_CFG_PAGE_SIZE      (2048U)
 
 // magic(4) + version(4) + seq(4) + hv_settng(2) + hv_enabled(1) + auto_on(1) = 16 bytes
-#define LIFU_CFG_HEADER_SIZE    (16U)
+#define LIFU_CFG_HEADER_SIZE    (20U)
 
-// CRC at end is 2 bytes
-#define LIFU_CFG_CRC_SIZE       (2U)
 
 // The rest of the page is JSON storage (must include '\0'):
 // 2048 - 16 - 2 = 2030
-#define LIFU_CFG_JSON_MAX       (LIFU_CFG_PAGE_SIZE - LIFU_CFG_HEADER_SIZE - LIFU_CFG_CRC_SIZE)
+#define LIFU_CFG_JSON_MAX       (LIFU_CFG_PAGE_SIZE - LIFU_CFG_HEADER_SIZE)
 // -> 2030 bytes
 
 // Persistent config blob that exactly fills one flash page.
@@ -39,10 +37,11 @@ typedef struct __attribute__((packed, aligned(4))) {
     uint16_t hv_settng;    // persisted scalar (user units)
     uint8_t  hv_enabled;   // 0/1
     uint8_t  auto_on;      // 0/1
+    uint16_t crc;          // CRC16-CCITT over bytes [0 .. offsetof(crc)-1]
+    uint16_t reserved;
 
     char     json[LIFU_CFG_JSON_MAX]; // NUL-terminated text blob
 
-    uint16_t crc;          // CRC16-CCITT over bytes [0 .. offsetof(crc)-1]
 } lifu_cfg_t;
 
 // Sanity checks for layout
