@@ -1,0 +1,12 @@
+{
+    "linux": {
+        "toolchain_gcc": "/opt/toolchains/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-gcc",
+        "gdb": "/opt/toolchains/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-eabi/bin/arm-none-eabi-gdb",
+        "openocd": "openocd",
+        "build_dir": "build",
+        "compile_commands": "${workspaceFolder}/build/Debug/compile_commands.json",
+        "stm32_device": "STM32L443xx",
+        "stm32_target": "stm32l4x.cfg",
+        "svd_file": "STM32L443.svd"
+    }
+}
