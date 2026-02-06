@@ -93,7 +93,7 @@ DMA_HandleTypeDef hdma_usart3_tx;
 
 /* USER CODE BEGIN PV */
 
-uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 3};
+uint8_t FIRMWARE_VERSION_DATA[3] = {2, 0, 4};
 uint32_t id_words[3] = {0};
 
 // Define the pointers
@@ -399,6 +399,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM7_Init();
   MX_TIM15_Init();
+  MX_USB_DEVICE_Init();
   MX_USART1_UART_Init();
   MX_LPTIM1_Init();
   MX_LPTIM2_Init();
@@ -1523,3 +1524,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
