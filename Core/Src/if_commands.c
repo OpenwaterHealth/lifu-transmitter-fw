@@ -21,7 +21,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-extern uint8_t FIRMWARE_VERSION_DATA[3];
 extern bool _enter_dfu;
 
 extern TX7332 transmitters[2];
@@ -154,8 +153,8 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
 			uartResp->command = cmd->command;
 			uartResp->addr = cmd->addr;
 			uartResp->reserved = cmd->reserved;
-			uartResp->data_len = sizeof(FIRMWARE_VERSION_DATA);
-			uartResp->data = FIRMWARE_VERSION_DATA;
+            uartResp->data_len = sizeof(FW_VERSION_STRING);
+            uartResp->data = (uint8_t*)FW_VERSION_STRING;
 			break;
 		case OW_CMD_ECHO:
 			// exact copy
@@ -284,13 +283,13 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			break;
 		case OW_CMD_VERSION:
 			module_id = ModuleManager_GetModuleIndex(cmd->addr);
-			cmd->data_len = sizeof(FIRMWARE_VERSION_DATA); //passing amount to read if forwarding to slave
+			cmd->data_len = sizeof(FW_VERSION_STRING); //passing amount to read if forwarding to slave
 			if (module_id == 0x00){
 				uartResp->command = cmd->command;
 				uartResp->addr = cmd->addr;
 				uartResp->reserved = cmd->reserved;
-				uartResp->data_len = sizeof(FIRMWARE_VERSION_DATA);
-				uartResp->data = FIRMWARE_VERSION_DATA;
+				uartResp->data_len = sizeof(FW_VERSION_STRING);
+				uartResp->data = (uint8_t*)FW_VERSION_STRING;
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);
 			}

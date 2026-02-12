@@ -8,6 +8,8 @@
 #ifndef INC_COMMON_H_
 #define INC_COMMON_H_
 
+#include "version.h"
+
 #include <stdint.h>
 
 #define COMMAND_MAX_SIZE 384
@@ -16,6 +18,20 @@
 // Configuration: each module has two transmitters; adjust as necessary.
 #define TX_PER_MODULE 2
 #define MAX_MODULES   6  // Total number of modules (master + slaves)
+
+#ifndef FW_VERSION
+#define FW_VERSION "unknown"
+#endif
+#ifndef FW_SHA
+#define FW_SHA "unknown"
+#endif
+#ifndef FW_BUILD_TIME
+#define FW_BUILD_TIME "unknown"
+#endif
+
+#define FW_VERSION_STRING FW_VERSION
+#define FW_SHA_STRING FW_SHA
+#define FW_BUILD_TIME_STRING FW_BUILD_TIME
 
 
 typedef enum {
