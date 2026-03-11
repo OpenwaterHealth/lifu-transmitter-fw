@@ -34,6 +34,10 @@
 #include "i2c_slave.h"
 #include "thermistor.h"
 
+#ifdef DEBUG_ENABLED
+#include "logging.h"
+#endif
+
 #include "utils.h"
 #include <stdio.h>
 #include <stdbool.h>
@@ -71,6 +75,8 @@ CRC_HandleTypeDef hcrc;
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
 
+IWDG_HandleTypeDef hiwdg;
+
 LPTIM_HandleTypeDef hlptim1;
 LPTIM_HandleTypeDef hlptim2;
 
@@ -82,10 +88,13 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim15;
+TIM_HandleTypeDef htim16;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 DMA_HandleTypeDef hdma_usart3_rx;
@@ -125,6 +134,8 @@ static void MX_TIM15_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_LPTIM1_Init(void);
 static void MX_LPTIM2_Init(void);
+static void MX_TIM16_Init(void);
+static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -402,7 +413,19 @@ int main(void)
   MX_USART1_UART_Init();
   MX_LPTIM1_Init();
   MX_LPTIM2_Init();
+  MX_TIM16_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
+#ifdef DEBUG_ENABLED
+  init_dma_logging();
+#endif
+
+  printf("\033c");
+  printf("LIFU Transmitter Firmware\r\n");
+  printf("VER: %s (%s)\r\n", FW_VERSION_STRING, FW_SHA_STRING);
+  printf("Date: %s\r\n", FW_BUILD_TIME_STRING);
+
+  printf("FW: start\r\n");
   SetPinsHighImpedance();
 
   // setup default
@@ -457,10 +480,6 @@ int main(void)
 
   // system entering ready state
   HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_RESET);
-
-
-  HAL_Delay(100);
-  MX_USB_DEVICE_Init();
 
 
   /* USER CODE END 2 */
@@ -799,6 +818,35 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
+  hiwdg.Init.Window = 4095;
+  hiwdg.Init.Reload = 4095;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
 
 }
 
@@ -1163,6 +1211,38 @@ static void MX_TIM15_Init(void)
 }
 
 /**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 4800-1;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 5000-1;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1283,6 +1363,12 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
@@ -1406,11 +1492,27 @@ static void MX_GPIO_Init(void)
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
+  
+#ifdef DEBUG_ENABLED
+	if(huart->Instance == DEBUG_UART.Instance)
+	{
+		logging_UART_TxCpltCallback(huart);
+    return;
+	}
+
 	if (huart->Instance == CALL_IN_UART.Instance) {
 		comms_handle_ow_CallIn_RxEventCallback(huart, Size);
 	}else if(huart->Instance == CALL_OUT_UART.Instance) {
 		comms_handle_ow_CallOut_RxEventCallback(huart, Size);
 	}
+#else
+	if (huart->Instance == CALL_IN_UART.Instance) {
+		comms_handle_ow_CallIn_RxEventCallback(huart, Size);
+	}else if(huart->Instance == CALL_OUT_UART.Instance) {
+		comms_handle_ow_CallOut_RxEventCallback(huart, Size);
+	}
+  
+#endif
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
@@ -1523,4 +1625,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-
