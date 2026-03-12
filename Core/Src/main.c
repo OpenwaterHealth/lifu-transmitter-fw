@@ -34,6 +34,10 @@
 #include "i2c_slave.h"
 #include "thermistor.h"
 
+#ifdef DEBUG_ENABLED
+#include "logging.h"
+#endif
+
 #include "utils.h"
 #include <stdio.h>
 #include <stdbool.h>
@@ -51,10 +55,37 @@
 /* USER CODE BEGIN PD */
 #define TOGGLE_INTERVAL 500  // Toggle every 500ms
 #define TEMPERATURE_INTERVAL 1000 // Toggle every 1000ms
-
-#define SYSTEM_MEMORY_BASE 0x1FF0F800  // Bootloader start address for STM32F072
 #define DEBOUNCE_DELAY_MS 10
 
+
+#define BL_BKP_SIGNATURE     (0x4F57424CU) /* 'OWBL' */
+#define BL_BKP_REQ_DFU_MAGIC (0x21554644U) /* 'DFU!' */
+
+static void bl_bkp_enable(void)
+{
+	__HAL_RCC_PWR_CLK_ENABLE();
+	HAL_PWR_EnableBkUpAccess();
+
+	if ((RCC->BDCR & RCC_BDCR_RTCEN) == 0U)
+	{
+		if ((RCC->BDCR & RCC_BDCR_RTCSEL) == 0U)
+		{
+			/* RTCSEL=10b -> LSI (RCC_BDCR_RTCSEL_1) */
+			MODIFY_REG(RCC->BDCR, RCC_BDCR_RTCSEL, RCC_BDCR_RTCSEL_1);
+		}
+		SET_BIT(RCC->BDCR, RCC_BDCR_RTCEN);
+	}
+}
+
+void bootloader_mark_boot_ok(void)
+{
+	bl_bkp_enable();
+	RTC->BKP0R = BL_BKP_SIGNATURE;
+	RTC->BKP2R = 0U; /* clears in-progress/force bits + failure count */
+	RTC->BKP3R = 0U; /* clears last-bad-fw marker */
+	__DSB();
+	__ISB();
+}
 
 /* USER CODE END PD */
 
@@ -71,6 +102,8 @@ CRC_HandleTypeDef hcrc;
 I2C_HandleTypeDef hi2c1;
 I2C_HandleTypeDef hi2c2;
 
+IWDG_HandleTypeDef hiwdg;
+
 LPTIM_HandleTypeDef hlptim1;
 LPTIM_HandleTypeDef hlptim2;
 
@@ -82,10 +115,13 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim15;
+TIM_HandleTypeDef htim16;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart1_rx;
+DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 DMA_HandleTypeDef hdma_usart3_rx;
@@ -125,6 +161,8 @@ static void MX_TIM15_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_LPTIM1_Init(void);
 static void MX_LPTIM2_Init(void);
+static void MX_TIM16_Init(void);
+static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -218,11 +256,11 @@ void WaitForAllSlavesReady(void)
 {
     while (!AreAllSlavesReady())
     {
-        printf("Waiting for all slaves to be ready...\n");
+        FW_DEBUG("Waiting for all slaves to be ready...\r\n");
         HAL_Delay(100);  // Delay for stability
     }
 
-    printf("All slaves are ready!\n");
+    FW_DEBUG("All slaves are ready!\r\n");
 }
 
 void SetSlaveReadyState(bool ready)
@@ -398,17 +436,36 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM7_Init();
   MX_TIM15_Init();
-  MX_USB_DEVICE_Init();
   MX_USART1_UART_Init();
   MX_LPTIM1_Init();
   MX_LPTIM2_Init();
+  MX_TIM16_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
+  if (HAL_IWDG_Refresh(&hiwdg) != HAL_OK)
+  {
+    /* Refresh Error */
+    Error_Handler();
+  }    
+  HAL_TIM_Base_Start_IT(&htim16);
+#ifdef DEBUG_ENABLED
+  init_dma_logging();
+#endif
+  bootloader_mark_boot_ok();
+  printf("\033c");
+  printf("LIFU Transmitter Firmware\r\n");
+  printf("VER: %s (%s)\r\n", FW_VERSION_STRING, FW_SHA_STRING);
+  printf("Date: %s\r\n", FW_BUILD_TIME_STRING);
+
+  FW_DEBUG("Initializing peripherals\r\n");
   SetPinsHighImpedance();
+  FW_DEBUG("Pins set to high impedance\r\n");
 
   // setup default
   deinit_trigger();
 
   cfg = (lifu_cfg_t *)lifu_cfg_get();
+  FW_DEBUG("LIFU config loaded\r\n");
 
   HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_SET);
 
@@ -416,10 +473,12 @@ int main(void)
 
   // Initialize thermistor library
   Thermistor_Start(&hadc1, 2.5f, 10000.0f);
+  FW_DEBUG("Thermistor started\r\n");
   HAL_Delay(5);
 
   //I2C_scan();
   Detect_MAX31875_Bus();
+  FW_DEBUG("MAX31875 bus detected\r\n");
   HAL_Delay(5);
 
   // Initializing TX7332
@@ -437,11 +496,13 @@ int main(void)
 
   // reset TX7332
   TX7332_Reset();
+  FW_DEBUG("TX7332 reset complete\r\n");
   HAL_Delay(25);
 
   // configure CS for TX7332
   TX7332_Init(&transmitters[0], TX1_CS_GPIO_Port, TX1_CS_Pin);
   TX7332_Init(&transmitters[1], TX2_CS_GPIO_Port, TX2_CS_Pin);
+  FW_DEBUG("TX7332 initialized (2 tx chips)\r\n");
   HAL_Delay(50);
 
   HAL_GPIO_WritePin(TX_CW_EN_GPIO_Port, TX_CW_EN_Pin, GPIO_PIN_RESET);
@@ -454,14 +515,12 @@ int main(void)
   HAL_GPIO_WritePin(TR7_EN_GPIO_Port, TR7_EN_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(TR8_EN_GPIO_Port, TR8_EN_Pin, GPIO_PIN_SET);
   HAL_Delay(50);
-
-  // system entering ready state
-  HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_RESET);
-
-
-  HAL_Delay(100);
   MX_USB_DEVICE_Init();
 
+  HAL_Delay(500);
+  
+  // system entering ready state
+  HAL_GPIO_WritePin(SYSTEM_RDY_GPIO_Port, SYSTEM_RDY_Pin, GPIO_PIN_RESET);
 
   /* USER CODE END 2 */
 
@@ -477,6 +536,7 @@ int main(void)
 	if(!get_configured()) {
 	  // start listen
 	  if(get_device_role()==ROLE_MASTER){
+		  FW_DEBUG("Role: MASTER - starting configuration\r\n");
 		  OW_TimerData timerDataConfig;
 
 		  ConfigureResetPin(true);
@@ -500,23 +560,28 @@ int main(void)
 		  HAL_GPIO_WritePin(PDN_GPIO_Port, PDN_Pin, GPIO_PIN_SET);
 		  HAL_Delay(10);
 		  ConfigureClock();
+		  FW_DEBUG("Master clock configured\r\n");
 
 	  }else{
+		  FW_DEBUG("Role: SLAVE — starting configuration\r\n");
 		  ConfigureHIzPin(TRIGGER_GPIO_Port, TRIGGER_Pin);
 		  ConfigureResetPin(false);
 		  configure_slave();
 		  SetSlaveReadyState(true);
+		  FW_DEBUG("Slave ready state set\r\n");
 	  }
 
 	  HAL_Delay(100);
 
 	  if(get_device_role()==ROLE_MASTER){
 		  WaitForAllSlavesReady();
+		  FW_DEBUG("All slaves ready\r\n");
 		  enumerate_slaves();
+		  FW_DEBUG("Slaves enumerated\r\n");
 		  set_configured(true);
 		  HAL_Delay(100);
 		  I2C_scan_global();
-
+		  FW_DEBUG("Starting host comms\r\n");
 		  comms_host_start();
 	  }else{
 		  while(!get_configured() && !_usb_interrupt_flag)
@@ -799,6 +864,35 @@ static void MX_I2C2_Init(void)
   /* USER CODE BEGIN I2C2_Init 2 */
 
   /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_32;
+  hiwdg.Init.Window = 4095;
+  hiwdg.Init.Reload = 4095;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
 
 }
 
@@ -1163,6 +1257,38 @@ static void MX_TIM15_Init(void)
 }
 
 /**
+  * @brief TIM16 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM16_Init(void)
+{
+
+  /* USER CODE BEGIN TIM16_Init 0 */
+
+  /* USER CODE END TIM16_Init 0 */
+
+  /* USER CODE BEGIN TIM16_Init 1 */
+
+  /* USER CODE END TIM16_Init 1 */
+  htim16.Instance = TIM16;
+  htim16.Init.Prescaler = 4800-1;
+  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim16.Init.Period = 5000-1;
+  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim16.Init.RepetitionCounter = 0;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM16_Init 2 */
+
+  /* USER CODE END TIM16_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1283,6 +1409,12 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
+  /* DMA1_Channel4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
@@ -1406,6 +1538,7 @@ static void MX_GPIO_Init(void)
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
+  
 	if (huart->Instance == CALL_IN_UART.Instance) {
 		comms_handle_ow_CallIn_RxEventCallback(huart, Size);
 	}else if(huart->Instance == CALL_OUT_UART.Instance) {
@@ -1418,6 +1551,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+#ifdef DEBUG_ENABLED
+	if(huart->Instance == DEBUG_UART.Instance)
+	{
+		logging_UART_TxCpltCallback(huart);
+    return;
+	}
+#endif
 	if(huart->Instance == CALL_OUT_UART.Instance){
 		comms_handle_ow_CallOut_TxCpltCallback(huart);
 	}else if(huart->Instance == CALL_IN_UART.Instance){
@@ -1427,7 +1567,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
 
 void delay_ms(uint32_t ms)
 {
-	printf("Clock: %ld\r\n", SystemCoreClock);
+	FW_DEBUG("Clock: %ld\r\n", SystemCoreClock);
     uint32_t delay_cycles = (SystemCoreClock / 1000) * ms;
     while (delay_cycles--) {
         __NOP();  // Ensures the loop doesn't get optimized away
@@ -1442,14 +1582,17 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
 	  HAL_LPTIM_Counter_Stop_IT(hlptim);
 
 	  if(_enter_dfu){
-		// jump to bootloader DFU
-		// 16k SRAM in address 0x2000 0000 - 0x2000 3FFF
-		*((unsigned long *)0x20003FF0) = 0xDEADBEEF;
+      /* Request DFU (bootloader) on next reset */
+      bl_bkp_enable();
+      RTC->BKP0R = BL_BKP_SIGNATURE;
+      RTC->BKP1R = BL_BKP_REQ_DFU_MAGIC;
 	  }
 
 	  MX_USB_DEVICE_DeInit();
 
-	  delay_ms(200);
+    __DSB();
+    __ISB();
+    delay_ms(200);
 
 	  // Reset the board
 	  NVIC_SystemReset();
@@ -1469,6 +1612,10 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
+  if (htim->Instance == TIM16){
+    (void)HAL_IWDG_Refresh(&hiwdg);    
+  }
+
   if (htim->Instance == CDC_TIMER.Instance) {
 	  CDC_Idle_Timer_Handler();
   }
@@ -1523,4 +1670,3 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
-

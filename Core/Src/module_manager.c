@@ -1,4 +1,5 @@
 #include "module_manager.h"
+#include "utils.h"
 #include <stdio.h>
 
 // Internal storage for module information.
@@ -34,17 +35,17 @@ uint8_t ModuleManager_GetLocalTxIndex(uint8_t globalTxIndex) {
 }
 
 void ModuleManager_Init(void) {
-	printf("ModuleManager_Init\r\n");
+	FW_DEBUG("ModuleManager_Init\r\n");
 	ModuleManager_clear_storage();
 }
 
 void ModuleManager_DeInit(void) {
-	printf("ModuleManager_DeInit\r\n");
+	FW_DEBUG("ModuleManager_DeInit\r\n");
 	ModuleManager_clear_storage();
 }
 
 int ModuleManager_RegisterMaster(uint8_t i2c_address) {
-	printf("ModuleManager_RegisterMaster\r\n");
+	FW_DEBUG("ModuleManager_RegisterMaster\r\n");
     if (totalModules >= MAX_MODULES) {
         return -1;  // No space available.
     }
@@ -57,7 +58,7 @@ int ModuleManager_RegisterMaster(uint8_t i2c_address) {
 }
 
 int ModuleManager_AddSlave(uint8_t i2c_address) {
-	printf("ModuleManager_AddSlave 0x%02X\r\n", i2c_address);
+	FW_DEBUG("ModuleManager_AddSlave 0x%02X\r\n", i2c_address);
     if (totalModules >= MAX_MODULES) {
         return -1;  // Maximum number of modules reached.
     }

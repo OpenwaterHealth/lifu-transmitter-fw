@@ -22,4 +22,10 @@ void get_unique_identifier(uint32_t* uid);
 uint32_t fnv1a_32(const uint8_t *data, size_t len);
 void printBuffer(const uint8_t* buffer, uint32_t size);
 
+#ifdef DEBUG_ENABLED
+#define FW_DEBUG(fmt, ...) printf("[FW] " fmt, ##__VA_ARGS__)
+#else
+#define FW_DEBUG(fmt, ...) ((void)0)
+#endif
+
 #endif /* INC_UTILS_H_ */

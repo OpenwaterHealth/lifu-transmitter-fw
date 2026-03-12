@@ -162,6 +162,11 @@ extern LPTIM_HandleTypeDef hlptim1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 
+#ifdef DEBUG_ENABLED 
+#define DEBUG_UART huart2
+#define DEBUG_HALF_DUPLEX 1
+#endif
+
 #define CALL_OUT_UART huart3
 #define CALL_IN_UART huart2
 #define REF_CLK_TIMER htim1

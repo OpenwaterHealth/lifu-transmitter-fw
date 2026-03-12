@@ -74,7 +74,7 @@ static void buffer_to_packet(uint8_t* pBuffer, UartPacket* pPacket) {
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (pPacket->data_len > COMMAND_MAX_SIZE - bufferIndex && pBuffer[COMMAND_MAX_SIZE-1] != OW_END_BYTE) {
+    if (pPacket->data_len > COMMAND_MAX_SIZE - bufferIndex && pBuffer[ONEWIRE_MAX_SIZE-1] != OW_END_BYTE) {
         // Send NACK response due to no end byte
     	pPacket->data_len = 0;
         pPacket->packet_type = OW_ERROR;
@@ -506,7 +506,7 @@ void comms_onewire_check_received()
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE - bufferIndex && owRxBuffer[COMMAND_MAX_SIZE-1] != OW_END_BYTE) {
+    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE - bufferIndex && owRxBuffer[ONEWIRE_MAX_SIZE-1] != OW_END_BYTE) {
         // Send NACK response due to no end byte
     	// data can exceed buffersize but every buffer must have a start and end packet
     	// command that will send more data than one buffer will follow with data packets to complete the request

@@ -5,9 +5,9 @@
         "openocd": "openocd",
         "build_dir": "build",
         "compile_commands": "${workspaceFolder}/build/Debug/compile_commands.json",
-        "stm32_device": "STM32H753xx",
-        "stm32_target": "stm32h7x.cfg",
-        "svd_file": "STM32H753.svd"
+        "stm32_device": "STM32L443xx",
+        "stm32_target": "stm32l4x.cfg",
+        "svd_file": "STM32L443.svd"
     },
     "windows": {
         "toolchain_gcc": "arm-none-eabi-gcc",
@@ -15,8 +15,8 @@
         "openocd": "openocd",
         "build_dir": "build",
         "compile_commands": "${workspaceFolder}/build/Debug/compile_commands.json",
-        "stm32_device": "STM32H753xx",
-        "stm32_target": "stm32h7x.cfg",
-        "svd_file": "STM32H753.svd"
+        "stm32_device": "STM32L443xx",
+        "stm32_target": "stm32l4x.cfg",
+        "svd_file": "STM32L443.svd"
     }
 }
