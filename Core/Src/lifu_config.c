@@ -1,10 +1,15 @@
 #include "lifu_config.h"
 
+#include "common.h" // COMMAND_MAX_SIZE for internal wire buffer
+
 #include <string.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 static lifu_cfg_t g_cfg;
 static bool       g_cfg_loaded = false;
+
+static uint8_t g_cfg_wire_buf[COMMAND_MAX_SIZE];
 
 // ------------------- CRC16-CCITT -------------------
 // CRC-16/CCITT-FALSE: poly=0x1021, init=0xFFFF, no final XOR.
@@ -55,15 +60,12 @@ static void lifu_cfg_make_defaults(lifu_cfg_t *dst)
     dst->magic      = LIFU_MAGIC;
     dst->version    = LIFU_VER;
     dst->seq        = 0;
-    dst->hv_settng  = 0;
-    dst->hv_enabled = 0;
-    dst->auto_on    = 0;
 
-    dst->json[0]    = '\0';
-    if (LIFU_CFG_JSON_MAX > 1U) {
-        memset(&dst->json[1],
-               0,
-               LIFU_CFG_JSON_MAX - 1U);
+    /* Initialize JSON with sensible defaults so an empty config contains useful values. */
+    {
+        const char *default_json = "{\"SN\": 12345678}";
+        /* Ensure we never overflow the JSON buffer. */
+        snprintf(dst->json, LIFU_CFG_JSON_MAX, "%s", default_json);
     }
 
     lifu_cfg_normalize_json(dst);
@@ -150,6 +152,104 @@ const lifu_cfg_t *lifu_cfg_get(void)
     return &g_cfg;
 }
 
+const char *lifu_cfg_get_json_ptr(void)
+{
+    lifu_cfg_ensure_loaded();
+    return g_cfg.json;
+}
+
+HAL_StatusTypeDef lifu_cfg_set_json(const char *json, size_t len)
+{
+    if (json == NULL) {
+        return HAL_ERROR;
+    }
+
+    lifu_cfg_ensure_loaded();
+
+    // Copy up to max-1 so we can always NUL-terminate.
+    if (len >= LIFU_CFG_JSON_MAX) {
+        len = LIFU_CFG_JSON_MAX - 1U;
+    }
+
+    memcpy(g_cfg.json, json, len);
+    g_cfg.json[len] = '\0';
+
+    // Persist.
+    return lifu_cfg_writeback();
+}
+
+HAL_StatusTypeDef lifu_cfg_wire_read(const uint8_t **out_buf,
+                                       uint16_t *out_len,
+                                       uint16_t max_payload_len)
+{
+    if (out_buf == NULL || out_len == NULL) {
+        return HAL_ERROR;
+    }
+
+    lifu_cfg_ensure_loaded();
+
+    if (max_payload_len > (uint16_t)sizeof(g_cfg_wire_buf)) {
+        max_payload_len = (uint16_t)sizeof(g_cfg_wire_buf);
+    }
+
+    if (max_payload_len < (uint16_t)sizeof(lifu_cfg_wire_hdr_t)) {
+        return HAL_ERROR;
+    }
+
+    lifu_cfg_wire_hdr_t hdr;
+    hdr.magic = g_cfg.magic;
+    hdr.version = g_cfg.version;
+    hdr.seq = g_cfg.seq;
+    hdr.crc = g_cfg.crc;
+
+    const uint16_t max_json = (uint16_t)(max_payload_len - sizeof(lifu_cfg_wire_hdr_t));
+
+    size_t json_total = strnlen(g_cfg.json, LIFU_CFG_JSON_MAX);
+    // include '\0' if present/space allows
+    if (json_total < LIFU_CFG_JSON_MAX) {
+        json_total += 1U;
+    }
+
+    uint16_t json_len = (uint16_t)((json_total > max_json) ? max_json : json_total);
+    hdr.json_len = json_len;
+
+    memcpy(g_cfg_wire_buf, &hdr, sizeof(hdr));
+    if (json_len > 0U) {
+        memcpy(&g_cfg_wire_buf[sizeof(hdr)], g_cfg.json, json_len);
+    }
+
+    *out_buf = g_cfg_wire_buf;
+    *out_len = (uint16_t)(sizeof(hdr) + json_len);
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef lifu_cfg_wire_write(const uint8_t *buf, uint16_t len)
+{
+    if (buf == NULL || len == 0U) {
+        return HAL_ERROR;
+    }
+
+    // Try to parse full wire format first.
+    if (len >= (uint16_t)sizeof(lifu_cfg_wire_hdr_t)) {
+        lifu_cfg_wire_hdr_t hdr;
+        memcpy(&hdr, buf, sizeof(hdr));
+
+        uint32_t expected_magic = LIFU_MAGIC;
+        uint32_t expected_ver = LIFU_VER;
+
+        if (hdr.magic == expected_magic && hdr.version == expected_ver) {
+            uint32_t total = (uint32_t)sizeof(lifu_cfg_wire_hdr_t) + (uint32_t)hdr.json_len;
+            if (total <= (uint32_t)len) {
+                const uint8_t *json_ptr = &buf[sizeof(lifu_cfg_wire_hdr_t)];
+                return lifu_cfg_set_json((const char *)json_ptr, (size_t)hdr.json_len);
+            }
+        }
+    }
+
+    // Fallback: treat payload as raw JSON bytes.
+    return lifu_cfg_set_json((const char *)buf, (size_t)len);
+}
+
 HAL_StatusTypeDef lifu_cfg_snapshot(lifu_cfg_t *out)
 {
     if (out == NULL) {
@@ -171,10 +271,6 @@ HAL_StatusTypeDef lifu_cfg_save(const lifu_cfg_t *new_cfg)
 
     g_cfg.magic      = LIFU_MAGIC;
     g_cfg.version    = LIFU_VER;
-
-    g_cfg.hv_settng  = new_cfg->hv_settng;
-    g_cfg.hv_enabled = new_cfg->hv_enabled;
-    g_cfg.auto_on    = new_cfg->auto_on;
 
     // Copy JSON safely. Caller might not have padded or '\0' at the end.
     memcpy(g_cfg.json, new_cfg->json, LIFU_CFG_JSON_MAX);

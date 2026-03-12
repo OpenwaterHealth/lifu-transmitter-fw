@@ -21,7 +21,7 @@ extern "C" {
 #define LIFU_CFG_PAGE_SIZE      (2048U)
 
 // magic(4) + version(4) + seq(4) + hv_settng(2) + hv_enabled(1) + auto_on(1) = 16 bytes
-#define LIFU_CFG_HEADER_SIZE    (20U)
+#define LIFU_CFG_HEADER_SIZE    (16U)
 
 
 // The rest of the page is JSON storage (must include '\0'):
@@ -34,9 +34,7 @@ typedef struct __attribute__((packed, aligned(4))) {
     uint32_t magic;        // LIFU_MAGIC
     uint32_t version;      // LIFU_VER
     uint32_t seq;          // monotonic counter
-    uint16_t hv_settng;    // persisted scalar (user units)
-    uint8_t  hv_enabled;   // 0/1
-    uint8_t  auto_on;      // 0/1
+    
     uint16_t crc;          // CRC16-CCITT over bytes [0 .. offsetof(crc)-1]
     uint16_t reserved;
 
@@ -77,6 +75,36 @@ HAL_StatusTypeDef lifu_cfg_commit(void);
 
 // Restores factory defaults and writes them to flash.
 HAL_StatusTypeDef lifu_cfg_factory_reset(void);
+
+// Convenience helpers for working with the JSON blob.
+// - lifu_cfg_get_json_ptr() returns a pointer into the live config (NUL-terminated).
+// - lifu_cfg_set_json() persists the provided JSON text into flash.
+const char *lifu_cfg_get_json_ptr(void);
+HAL_StatusTypeDef lifu_cfg_set_json(const char *json, size_t len);
+
+// ======================== WIRE FORMAT (UART/USB) ========================
+// When sending config over the command interface, we serialize as:
+//   [lifu_cfg_wire_hdr_t][json bytes (json_len)]
+// For WRITE, you may send either:
+//   - full wire buffer (header+json), OR
+//   - raw JSON bytes (no header)
+typedef struct __attribute__((packed)) {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t seq;
+    uint16_t crc;
+    uint16_t json_len; // number of JSON bytes included (may include trailing '\0')
+} lifu_cfg_wire_hdr_t;
+
+// Produces a pointer to an internal buffer containing the serialized config.
+// max_payload_len is the caller's maximum allowed payload size.
+HAL_StatusTypeDef lifu_cfg_wire_read(const uint8_t **out_buf,
+                                       uint16_t *out_len,
+                                       uint16_t max_payload_len);
+
+// Applies a serialized buffer to config and writes it to flash.
+// Accepts either full wire buffer (header+json) or raw JSON bytes.
+HAL_StatusTypeDef lifu_cfg_wire_write(const uint8_t *buf, uint16_t len);
 
 #ifdef __cplusplus
 }
