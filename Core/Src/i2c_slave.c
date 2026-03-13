@@ -159,13 +159,13 @@ bool set_transmit_buffer(I2C_TX_Packet* packet)
 			ret = i2c_packet_fromBuffer(tx_buffer, packet);
 		}
 	}else{
-		tx_packet.id = packet->id;
-		tx_packet.cmd = packet->cmd;
-		tx_packet.reserved = packet->reserved;
+		tx_packet.id = 0;
+		tx_packet.cmd = 0;
+		tx_packet.reserved = OW_INVALID_PACKET;
 		tx_packet.pData = NULL;
 		if(i2c_packet_toBuffer(&tx_packet, tx_buffer)>0) ret = true;
 	}
-	if(!ret){
+	if(!ret && packet != NULL){
 		packet->reserved = OW_INVALID_PACKET;
 	}
 	return ret;

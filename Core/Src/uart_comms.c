@@ -23,8 +23,8 @@
 // Private variables
 uint8_t rxBuffer[COMMAND_MAX_SIZE];
 uint8_t txBuffer[COMMAND_MAX_SIZE];
-uint8_t owRxBuffer[ONEWIRE_MAX_SIZE];
-uint8_t owTxBuffer[ONEWIRE_MAX_SIZE];
+uint8_t owRxBuffer[COMMAND_MAX_SIZE];
+uint8_t owTxBuffer[COMMAND_MAX_SIZE];
 
 volatile uint32_t ptrReceive;
 volatile uint8_t rx_flag = 0;
@@ -545,11 +545,29 @@ void comms_onewire_check_received()
     // Check CRC
     if (ow_receive_packet.crc != calculated_crc) {
         // Send NACK response due to bad CRC
-    	ow_send_packet.id = ow_send_packet.id;
+    	ow_send_packet.id = ow_receive_packet.id;
     	ow_send_packet.addr = 0;
     	ow_send_packet.reserved = OW_BAD_CRC;
     	ow_send_packet.data_len = 0;
     	ow_send_packet.packet_type = OW_ERROR;
+        goto NextOneWirePacket;
+    }
+
+    // If this slave is already configured, relay discovery packets to the next slave in the chain
+    if (ow_receive_packet.packet_type == OW_ONE_WIRE &&
+        ow_receive_packet.command == OW_CMD_DISCOVERY &&
+        get_configured() && get_module_ID() != 0)
+    {
+        memset((void*)&ow_data_packet, 0, sizeof(ow_data_packet));
+        if (comms_callout_onewire_send(&ow_receive_packet)) {
+            comms_callout_onewire_receive(&ow_data_packet);
+            ow_send_packet = ow_data_packet;
+        } else {
+            ow_send_packet.id = ow_receive_packet.id;
+            ow_send_packet.packet_type = OW_ERROR;
+            ow_send_packet.data_len = 0;
+            ow_send_packet.data = NULL;
+        }
         goto NextOneWirePacket;
     }
 
@@ -658,7 +676,11 @@ bool enumerate_slaves()
 				ModuleManager_AddSlave(next_address);
 				slave_count++;
 				next_address++;  // Move on to the next address.
-
+			}
+			else if (ow_receive_packet.packet_type == OW_TIMEOUT)
+			{
+				// OW_TIMEOUT means the chain ended — no more slaves
+				break;
 			}
 			else
 			{

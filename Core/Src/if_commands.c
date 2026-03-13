@@ -103,6 +103,9 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 	if(module_id == 0){
 		uartResp->id = cmd->id;
 		uartResp->command = cmd->command;
+		uartResp->packet_type = OW_ERROR;
+		uartResp->data_len = 0;
+		uartResp->data = NULL;
 		return;
 	}
 
@@ -115,11 +118,18 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 		uartResp->packet_type = OW_ERROR;
 		uartResp->command = cmd->command;
 	}else {
+		if(cmd->data_len > 0xFFU){
+			uartResp->packet_type = OW_ERROR;
+			uartResp->command = cmd->command;
+			uartResp->data_len = 0;
+			uartResp->data = NULL;
+			return;
+		}
 		// relay to one of the slaves
 		send_i2c_packet.id = cmd->id;
 		send_i2c_packet.cmd = cmd->command;
 		send_i2c_packet.reserved = (uint8_t)local_tx_idx;
-		send_i2c_packet.data_len = cmd->data_len;
+		send_i2c_packet.data_len = (uint8_t)cmd->data_len;
 		send_i2c_packet.pData = cmd->data;
 
 		send_len = i2c_packet_toBuffer(&send_i2c_packet, send_buff);  // rebuild buffer
@@ -127,7 +137,8 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 		if(send_buffer_to_slave_global(slave_addr, send_buff, send_len) != 0) { // send buffer to slave
 			uartResp->packet_type = OW_ERROR;
 		}else{
-			HAL_Delay(250);
+			uint32_t _t0 = HAL_GetTick();
+			while ((HAL_GetTick() - _t0) < 50U) { /* wait for slave to process */ }
 			process_i2c_read_buffer(uartResp, cmd, module_id);
 		}
 	}
@@ -154,7 +165,7 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
 			uartResp->command = cmd->command;
 			uartResp->addr = cmd->addr;
 			uartResp->reserved = cmd->reserved;
-            uartResp->data_len = sizeof(FW_VERSION_STRING);
+            uartResp->data_len = strlen(FW_VERSION_STRING);
             uartResp->data = (uint8_t*)FW_VERSION_STRING;
 			break;
 		case OW_CMD_ECHO:
@@ -178,7 +189,7 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
 			id_words[0] = HAL_GetUIDw0();
 			id_words[1] = HAL_GetUIDw1();
 			id_words[2] = HAL_GetUIDw2();
-			uartResp->data_len = 16;
+			uartResp->data_len = sizeof(id_words);
 			uartResp->data = (uint8_t *)&id_words;
 			break;
 		case OW_CMD_GET_TEMP:
@@ -335,12 +346,12 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			break;
 		case OW_CMD_VERSION:
 			module_id = ModuleManager_GetModuleIndex(cmd->addr);
-			cmd->data_len = sizeof(FW_VERSION_STRING); //passing amount to read if forwarding to slave
+			cmd->data_len = strlen(FW_VERSION_STRING); //passing amount to read if forwarding to slave
 			if (module_id == 0x00){
 				uartResp->command = cmd->command;
 				uartResp->addr = cmd->addr;
 				uartResp->reserved = cmd->reserved;
-				uartResp->data_len = sizeof(FW_VERSION_STRING);
+				uartResp->data_len = strlen(FW_VERSION_STRING);
 				uartResp->data = (uint8_t*)FW_VERSION_STRING;
 			} else {
 				process_i2c_forward(uartResp, cmd, module_id);
@@ -576,7 +587,7 @@ static void TX7332_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 	uint8_t module_id = 0;
 	uint16_t reg_address = 0;
 	uint32_t reg_value = 0;
-	uint32_t reg_data_buff[REG_DATA_LEN] = {0};
+	static uint32_t reg_data_buff[REG_DATA_LEN];
 	int reg_count = 0;
 
 	uartResp->id = cmd->id;
@@ -781,7 +792,8 @@ static void TX7332_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 		break;
 	case OW_TX7332_DEVICE_COUNT:
 	{
-		uint8_t temp_module_count = get_module_count();
+		static uint8_t temp_module_count;
+		temp_module_count = get_module_count();
 		uartResp->command = OW_TX7332_DEVICE_COUNT;
 		uartResp->addr = 0;
 		uartResp->reserved = 0;
