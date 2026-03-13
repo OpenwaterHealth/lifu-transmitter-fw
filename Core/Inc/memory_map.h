@@ -143,7 +143,9 @@
  #define ADDR_FLASH_END_ADDRESS ((uint32_t)0x08040000) /* END OF FLASH */
 
 #define FLASH_START_ADDRESS        			((uint32_t)0x08000000)
-
+#define APPLICATION_ADDRESS        			((uint32_t)0x08010000) // 190 KB application region after metadata
+#define APPLICATION_USER_CONFIG    			((uint32_t)0x0803F800) // 2 KB user config region (page 127, end of flash), application use only -- not writable via DFU
+#define APPLICATION_MAX_SIZE                ((uint32_t)(190U * 1024U))
 
 #ifdef __cplusplus
 }
