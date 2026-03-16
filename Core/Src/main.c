@@ -555,11 +555,11 @@ int main(void)
 
         // 2MHz REF CLK
         Setup_Reference_Clock();
+        // reset clock chip
+        HAL_GPIO_WritePin(PDN_GPIO_Port, PDN_Pin, GPIO_PIN_SET);
         HAL_Delay(10);
 
         // clock chip setup
-        HAL_GPIO_WritePin(PDN_GPIO_Port, PDN_Pin, GPIO_PIN_SET);
-        HAL_Delay(10);
         ConfigureClock();
         FW_DEBUG("Master clock configured\r\n");
       }
@@ -582,7 +582,7 @@ int main(void)
         enumerate_slaves();
         FW_DEBUG("Slaves enumerated\r\n");
         set_configured(true);
-        HAL_Delay(100);
+        HAL_Delay(1);
         I2C_scan_global();
         FW_DEBUG("Starting host comms\r\n");
         comms_host_start();

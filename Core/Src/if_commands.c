@@ -326,11 +326,16 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
 static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 {
 	uint8_t module_id = 0;
+	if (cmd->addr >= get_module_count()) {
+		uartResp->packet_type = OW_ERROR;
+		return;
+	}else{
+		module_id = (uint8_t)cmd->addr;
+	}
 
 	switch (cmd->command)
 	{
 		case OW_CMD_PING:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			if (module_id == 0x00){
 				uartResp->command = cmd->command;
 				uartResp->addr = cmd->addr;
@@ -339,13 +344,7 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				process_i2c_forward(uartResp, cmd, module_id);
 			}
 			break;
-		case OW_CMD_PONG:
-			uartResp->command = cmd->command;
-			uartResp->addr = cmd->addr;
-			uartResp->reserved = cmd->reserved;
-			break;
 		case OW_CMD_VERSION:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			cmd->data_len = strlen(FW_VERSION_STRING); //passing amount to read if forwarding to slave
 			if (module_id == 0x00){
 				uartResp->command = cmd->command;
@@ -358,16 +357,19 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			}
 			break;
 		case OW_CMD_ECHO:
-			// exact copy
-			uartResp->id = cmd->id;
-			uartResp->command = cmd->command;
-			uartResp->addr = cmd->addr;
-			uartResp->reserved = cmd->reserved;
-			uartResp->data_len = cmd->data_len;
-			uartResp->data = cmd->data;
+			if (module_id == 0x00){
+				// exact copy
+				uartResp->id = cmd->id;
+				uartResp->command = cmd->command;
+				uartResp->addr = cmd->addr;
+				uartResp->reserved = cmd->reserved;
+				uartResp->data_len = cmd->data_len;
+				uartResp->data = cmd->data;
+			} else {
+				process_i2c_forward(uartResp, cmd, module_id);
+			}
 			break;
 		case OW_CMD_TOGGLE_LED:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			if (module_id == 0x00)
 			{
 				uartResp->data_len = 0;
@@ -379,7 +381,6 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			}
 			break;
 		case OW_CMD_HWID:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			cmd->data_len = HW_ID_DATA_LENGTH; //passing amount to read if forwarding to slave
 			if (module_id == 0x00)
 			{
@@ -397,7 +398,6 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			}
 			break;
 		case OW_CMD_GET_TEMP:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			cmd->data_len = TEMPERATURE_DATA_LENGTH; //passing amount to read if forwarding to slave
 			if (module_id == 0){
 				uartResp->id = cmd->id;
@@ -409,7 +409,6 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			}
 			break;
 		case OW_CMD_GET_AMBIENT:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			cmd->data_len = TEMPERATURE_DATA_LENGTH; //passing amount to read if forwarding to slave
 			if (module_id == 0){
 				uartResp->id = cmd->id;
@@ -475,6 +474,11 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			uartResp->data = (uint8_t *)retTriggerJson;
 			break;
         case OW_CMD_USR_CFG:
+			if (module_id != 0x00)
+			{
+				process_i2c_forward(uartResp, cmd, module_id);
+				return;
+			}
             // reserved == 0: READ
             // reserved == 1: WRITE (cmd->data is JSON text)
             if (cmd->reserved == 0) {
@@ -526,7 +530,6 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
             }
             break;
 		case OW_CMD_RESET:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			if (module_id == 0x00){
 				uartResp->command = cmd->command;
 				uartResp->addr = cmd->addr;
@@ -544,7 +547,6 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			}
 			break;
 		case OW_CMD_DFU:
-			module_id = ModuleManager_GetModuleIndex(cmd->addr);
 			if (module_id == 0x00){
 				uartResp->command = cmd->command;
 				uartResp->addr = cmd->addr;

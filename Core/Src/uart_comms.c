@@ -17,8 +17,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define ONEWIRE_TIMEOUT 1000
-#define TX_TIMEOUT 1000
+#define ONEWIRE_TIMEOUT 500
+#define TX_TIMEOUT 500
 
 // Private variables
 uint8_t rxBuffer[COMMAND_MAX_SIZE];
