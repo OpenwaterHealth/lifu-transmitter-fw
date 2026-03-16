@@ -75,6 +75,19 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
+# Bootloader build option
+# When ON : FLASH origin=0x08010000, LENGTH=190K, VTOR offset=0x00010000 (uses STM32L443XX_FLASH.ld)
+# When OFF: FLASH origin=0x08000000, LENGTH=256K, no VTOR override   (uses STM32L443RCIX_FLASH.ld)
+option(BOOTLOADER_BUILD "Build firmware to run with bootloader (FLASH @ 0x08010000)" OFF)
+
+if(BOOTLOADER_BUILD)
+    message(STATUS "Bootloader build : FLASH origin=0x08010000, LENGTH=190K, VTOR=0x08010000")
+    set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32L443XX_FLASH.ld")
+else()
+    message(STATUS "Standalone build : FLASH origin=0x08000000, LENGTH=256K")
+    set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32L443RCIX_FLASH.ld")
+endif()
+
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
@@ -138,6 +151,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+# Linker script (conditional on BOOTLOADER_BUILD)
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-T${LINKER_SCRIPT}")
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES LINK_DEPENDS "${LINKER_SCRIPT}")
 
 # Generate hex and bin files after build
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD

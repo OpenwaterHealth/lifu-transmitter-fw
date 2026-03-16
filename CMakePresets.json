@@ -23,6 +23,26 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
             }
+        },
+        {
+            "name": "DebugBL",
+            "inherits": "default",
+            "displayName": "Debug (Bootloader)",
+            "description": "Debug build for use with bootloader: FLASH @ 0x08010000, VTOR offset 0x00010000",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BOOTLOADER_BUILD": "ON"
+            }
+        },
+        {
+            "name": "ReleaseBL",
+            "inherits": "default",
+            "displayName": "Release (Bootloader)",
+            "description": "Release build for use with bootloader: FLASH @ 0x08010000, VTOR offset 0x00010000",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BOOTLOADER_BUILD": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -33,6 +53,14 @@
         {
             "name": "Release",
             "configurePreset": "Release"
+        },
+        {
+            "name": "DebugBL",
+            "configurePreset": "DebugBL"
+        },
+        {
+            "name": "ReleaseBL",
+            "configurePreset": "ReleaseBL"
         }
     ]
 }

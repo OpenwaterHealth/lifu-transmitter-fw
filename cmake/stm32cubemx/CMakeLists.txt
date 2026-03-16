@@ -6,6 +6,7 @@ set(MX_Defines_Syms
 	USE_HAL_DRIVER 
 	STM32L443xx
     $<$<CONFIG:Debug>:DEBUG>
+    $<$<BOOL:${BOOTLOADER_BUILD}>:USER_VECT_TAB_ADDRESS>
 )
 
 # STM32CubeMX generated include paths
@@ -91,7 +92,8 @@ set(MX_LINK_DIRS
 set(MX_LINK_LIBS 
     STM32_Drivers
     ${TOOLCHAIN_LINK_LIBRARIES}
-    USB_Device_Library	
+    USB_Device_Library
+	
 )
 # Interface library for includes and symbols
 add_library(stm32cubemx INTERFACE)
