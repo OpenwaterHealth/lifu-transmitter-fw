@@ -94,6 +94,10 @@ add_executable(${CMAKE_PROJECT_NAME})
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
+# Strip the CubeMX-hardcoded linker script so the root can control it conditionally
+# (safe to re-run when CubeMX regenerates cmake/stm32cubemx/CMakeLists.txt)
+string(REGEX REPLACE "-T[^ \"]*|\\-T \"[^\"]*\"" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
@@ -140,6 +144,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    $<$<BOOL:${BOOTLOADER_BUILD}>:USER_VECT_TAB_ADDRESS>
 )
 
 # Remove wrong libob.a library dependency when using cpp files

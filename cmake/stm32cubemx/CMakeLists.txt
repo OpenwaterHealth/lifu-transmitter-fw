@@ -6,7 +6,6 @@ set(MX_Defines_Syms
 	USE_HAL_DRIVER 
 	STM32L443xx
     $<$<CONFIG:Debug>:DEBUG>
-    $<$<BOOL:${BOOTLOADER_BUILD}>:USER_VECT_TAB_ADDRESS>
 )
 
 # STM32CubeMX generated include paths
@@ -83,6 +82,9 @@ set(USB_Device_Library_Src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
 )
+
+# Linker script (CubeMX default - overridden in root CMakeLists.txt for bootloader builds)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T \"${CMAKE_SOURCE_DIR}/STM32L443XX_FLASH.ld\"")
 
 # Link directories setup
 set(MX_LINK_DIRS

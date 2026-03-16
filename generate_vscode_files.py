@@ -250,8 +250,94 @@ EMBED_TEMPLATES = {
             "options": {
                 "cwd": "${workspaceFolder}"
             }
-        }
-        ,
+        },
+        {
+            "label": "CMake: Configure (DebugBL)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "DebugBL"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "options": {
+                "env": {
+                    "PATH": "${TOOLCHAIN_BIN_PATH}:${env:PATH}"
+                }
+            }
+        },
+        {
+            "label": "CMake: Build (DebugBL)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/${BUILD_DIR}/DebugBL",
+                "--config",
+                "Debug",
+                "--target",
+                "all",
+                "-j",
+                "10",
+                "--verbose"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "dependsOn": [
+                "CMake: Configure (DebugBL)"
+            ],
+            "options": {
+                "env": {
+                    "PATH": "${TOOLCHAIN_BIN_PATH}:${env:PATH}"
+                }
+            }
+        },
+        {
+            "label": "CMake: Configure (ReleaseBL)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--preset",
+                "ReleaseBL"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "options": {
+                "env": {
+                    "PATH": "${TOOLCHAIN_BIN_PATH}:${env:PATH}"
+                }
+            }
+        },
+        {
+            "label": "CMake: Build (ReleaseBL)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/${BUILD_DIR}/ReleaseBL",
+                "--config",
+                "Release",
+                "--target",
+                "all",
+                "-j",
+                "10"
+            ],
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "dependsOn": [
+                "CMake: Configure (ReleaseBL)"
+            ],
+            "options": {
+                "env": {
+                    "PATH": "${TOOLCHAIN_BIN_PATH}:${env:PATH}"
+                }
+            }
+        },
         {
             "label": "Kill OpenOCD",
             "type": "shell",
