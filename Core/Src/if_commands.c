@@ -112,9 +112,18 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 	memset(send_buff, 0, I2C_BUFFER_SIZE);
 
 	slave_addr = ModuleManager_GetModule(module_id)->i2c_address;
-	local_tx_idx = cmd->addr - (module_id * TX_PER_MODULE);
 
-	if(local_tx_idx<0 || local_tx_idx>1){
+	/* For TX7332 commands cmd->addr is the global TX chip index, so we compute
+	 * the local chip index within the slave.  For all other packet types
+	 * (HWID, PING, VERSION, USR_CFG, etc.) cmd->addr is the module index and
+	 * local_tx_idx is unused / irrelevant on the slave, so default to 0. */
+	if (cmd->packet_type == OW_TX7332) {
+		local_tx_idx = cmd->addr - (module_id * TX_PER_MODULE);
+	} else {
+		local_tx_idx = 0;
+	}
+
+	if(cmd->packet_type == OW_TX7332 && (local_tx_idx<0 || local_tx_idx>1)){
 		uartResp->packet_type = OW_ERROR;
 		uartResp->command = cmd->command;
 	}else {
