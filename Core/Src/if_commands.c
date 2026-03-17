@@ -23,6 +23,7 @@
 #include <string.h>
 
 extern bool _enter_dfu;
+extern bool _force_stm32_dfu; // for testing purposes, forces to enter STM32 system bootloader instead of custom DFU mode
 
 extern TX7332 transmitters[2];
 extern bool async_enabled;
@@ -570,6 +571,7 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 				uartResp->data_len = 0;
 
 				_enter_dfu = true;
+				_force_stm32_dfu = cmd->reserved == 0x77? true : false; // force to enter STM32 DFU bootloader instead of custom DFU mode for testing purposes
 
 				__HAL_LPTIM_CLEAR_FLAG(&RESET_TIMER, LPTIM_FLAG_ARRM | LPTIM_FLAG_CMPM |
 													LPTIM_FLAG_EXTTRIG | LPTIM_FLAG_DOWN |

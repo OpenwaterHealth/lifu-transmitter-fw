@@ -59,6 +59,23 @@
 #define BL_BKP_SIGNATURE (0x4F57424CU)     /* 'OWBL' */
 #define BL_BKP_REQ_DFU_MAGIC (0x21554644U) /* 'DFU!' */
 
+/* STM32L4 system-memory (ROM) bootloader entry point */
+#define STM32_SYS_BL_ADDR   (0x1FFF0000U)
+/* Our custom bootloader occupies 0x08000000..0x0800FFFF (62 KB) */
+#define CUSTOM_BL_START     (0x08000000U)
+#define CUSTOM_BL_END       (0x08010000U)
+
+/**
+ * @brief Return true if our custom bootloader is programmed.
+ *        Inspects the reset-handler vector stored at 0x08000004; if it
+ *        falls inside the custom BL flash region a BL is present.
+ */
+static bool is_custom_bootloader_present(void)
+{
+  uint32_t reset_handler = *(volatile uint32_t *)(CUSTOM_BL_START + 4U);
+  return (reset_handler >= CUSTOM_BL_START && reset_handler < CUSTOM_BL_END);
+}
+
 static void bl_bkp_enable(void)
 {
   __HAL_RCC_PWR_CLK_ENABLE();
@@ -134,6 +151,7 @@ I2C_HandleTypeDef *GLOBAL_I2C_DEVICE = NULL;
 I2C_HandleTypeDef *LOCAL_I2C_DEVICE = NULL;
 
 volatile bool _enter_dfu = false;
+volatile bool _force_stm32_dfu = false; // for testing purposes, forces to enter STM32 system bootloader instead of custom DFU mode
 volatile bool _usb_interrupt_flag = false;
 TX7332 transmitters[TX_PER_MODULE];
 
@@ -1578,20 +1596,26 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
 
     if (_enter_dfu)
     {
-      /* Request DFU (bootloader) on next reset */
-      bl_bkp_enable();
-      RTC->BKP0R = BL_BKP_SIGNATURE;
-      RTC->BKP1R = BL_BKP_REQ_DFU_MAGIC;
+      if (is_custom_bootloader_present() && _force_stm32_dfu == false)
+      {
+        /* Custom bootloader present — request DFU via backup register and reset */
+        bl_bkp_enable();
+        RTC->BKP0R = BL_BKP_SIGNATURE;
+        RTC->BKP1R = BL_BKP_REQ_DFU_MAGIC;
+      }
+      else
+      {
+        // jump to bootloader DFU
+        // 16k SRAM in address 0x2000 0000 - 0x2000 3FFF
+        *((unsigned long *)0x20003FF0) = 0xDEADBEEF;
+      }
+
+      MX_USB_DEVICE_DeInit();
+      __DSB();
+      __ISB();
+      delay_ms(200);
+      NVIC_SystemReset();
     }
-
-    MX_USB_DEVICE_DeInit();
-
-    __DSB();
-    __ISB();
-    delay_ms(200);
-
-    // Reset the board
-    NVIC_SystemReset();
   }
 }
 
