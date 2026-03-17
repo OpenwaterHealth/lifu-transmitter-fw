@@ -142,7 +142,7 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 		send_i2c_packet.id = cmd->id;
 		send_i2c_packet.cmd = cmd->command;
 		send_i2c_packet.reserved = (uint8_t)local_tx_idx;
-		send_i2c_packet.data_len = (uint8_t)cmd->data_len;
+		send_i2c_packet.data_len = cmd->data_len;
 		send_i2c_packet.pData = cmd->data;
 
 		send_len = i2c_packet_toBuffer(&send_i2c_packet, send_buff);  // rebuild buffer

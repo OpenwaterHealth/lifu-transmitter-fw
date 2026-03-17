@@ -39,8 +39,8 @@ bool i2c_packet_fromBuffer(const uint8_t* buffer, I2C_TX_Packet* pTX) {
     uint16_t crc = 0xFFFF;
     const uint8_t* pBuff = buffer;
 
-    pTX->pkt_len = *buffer;
-    buffer++;
+    pTX->pkt_len = (uint16_t)(buffer[0] | ((uint16_t)buffer[1] << 8)); // pkt_len (little-endian)
+    buffer += 2;
     pTX->id = (uint16_t)((buffer[1] << 8) | buffer[0]); // Packet ID (little-endian)
     buffer += 2;
     pTX->cmd = *buffer; // Command ID
@@ -72,10 +72,11 @@ size_t i2c_packet_toBuffer(I2C_TX_Packet* pTX, uint8_t* buffer) {
 
     pTX->crc = 0xFFFF;
 
-    // packet length
-    *buffer = pTX->data_len + HEADER_SIZE;
-    pTX->pkt_len = *buffer;
-    buffer++;
+    // packet length (2 bytes, little-endian)
+    pTX->pkt_len = (uint16_t)(pTX->data_len + HEADER_SIZE);
+    buffer[0] = (uint8_t)(pTX->pkt_len & 0xFF);
+    buffer[1] = (uint8_t)(pTX->pkt_len >> 8);
+    buffer += 2;
 
     // Write Packet ID
     buffer[0] = (uint8_t)(pTX->id & 0xFF);

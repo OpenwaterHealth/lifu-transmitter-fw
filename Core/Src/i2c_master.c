@@ -107,9 +107,9 @@ uint8_t send_buffer_to_slave_global(uint8_t slave_addr, uint8_t* pBuffer, uint16
 	return 0;
 }
 
-uint8_t read_buffer_of_slave_global(uint8_t slave_addr, uint8_t* pBuffer, uint16_t max_len)
+uint16_t read_buffer_of_slave_global(uint8_t slave_addr, uint8_t* pBuffer, uint16_t max_len)
 {
-    uint8_t rx_len = max_len + HEADER_SIZE;
+    uint16_t rx_len = max_len + HEADER_SIZE;
     
 	// Check if the I2C handle is valid
     if (HAL_I2C_GetState(GLOBAL_I2C_DEVICE) != HAL_I2C_STATE_READY) {

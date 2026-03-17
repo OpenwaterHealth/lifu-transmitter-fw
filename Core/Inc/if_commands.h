@@ -18,7 +18,7 @@
 #define HW_ID_DATA_LENGTH 12
 #define TEMPERATURE_DATA_LENGTH 4
 
-#define HEADER_SIZE 10
+#define HEADER_SIZE 11
 
 bool process_if_command(UartPacket *cmd, UartPacket *resp);
 

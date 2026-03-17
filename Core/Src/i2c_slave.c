@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DATA_BUFFER_SIZE 128
+#define DATA_BUFFER_SIZE 2048
 
 uint8_t rx_buffer[I2C_BUFFER_SIZE];
 uint8_t tx_buffer[I2C_BUFFER_SIZE];
@@ -199,7 +199,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		{
 			rx_count = 0;
 			countAddr++;
-			HAL_I2C_Slave_Sequential_Receive_IT(hi2c, rx_buffer + rx_count, 1, I2C_FIRST_FRAME);
+			HAL_I2C_Slave_Sequential_Receive_IT(hi2c, rx_buffer + rx_count, 2, I2C_FIRST_FRAME);
 		}
 	}
 	else
@@ -256,15 +256,16 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 	if(I2cHandle->Instance == GLOBAL_I2C_DEVICE->Instance) {
 		if(is_first_byte_received == 0)
 		{
-			rx_count++;
+			rx_count += 2;
 			is_first_byte_received = 1;
-			uint8_t bytes_left = rx_buffer[0]-1;
+			uint16_t pkt_len16 = (uint16_t)(rx_buffer[0] | ((uint16_t)rx_buffer[1] << 8));
+			uint16_t bytes_left = pkt_len16 - 2;
 
 			HAL_I2C_Slave_Seq_Receive_IT(I2cHandle, rx_buffer + rx_count, bytes_left, I2C_LAST_FRAME);
 		}
 		else
 		{
-			rx_count = rx_buffer[0];
+			rx_count = (uint16_t)(rx_buffer[0] | ((uint16_t)rx_buffer[1] << 8));
 			is_first_byte_received=0;
 			// process data
 			if (!i2c_packet_fromBuffer(rx_buffer, &rx_packet))

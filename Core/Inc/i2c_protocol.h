@@ -16,7 +16,7 @@
 #define I2C_BUFFER_SIZE 2080
 
 typedef struct {
-	uint8_t pkt_len;
+	uint16_t pkt_len;
 	uint16_t id;
 	uint8_t cmd;
 	uint8_t tx_id;
