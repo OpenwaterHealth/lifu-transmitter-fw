@@ -898,6 +898,49 @@ bool process_if_command(UartPacket *cmd, UartPacket *resp)
 	case OW_TX7332:
 		TX7332_ProcessCommand(resp, cmd);
 		break;
+	case OW_I2C_PASSTHRU:
+	{
+		/* Raw I2C passthrough: forward bytes to an I2C slave (typically the
+		 * DFU bootloader at 0x72) and optionally read back bytes.
+		 *
+		 * cmd->addr     = 7-bit I2C slave address
+		 * cmd->command  = 0x00  write-only
+		 *                 0x01  write then delay 5ms then read
+		 * cmd->reserved = number of bytes to read back (command=0x01 only, max 255)
+		 * cmd->data     = bytes to write (may be empty for a read-only op)
+		 */
+		static uint8_t i2c_passthru_rx[256];
+		uint8_t i2c_addr = cmd->addr;
+		uint8_t do_read  = (cmd->command == 0x01);
+		uint8_t rx_count = cmd->reserved;
+
+		resp->command   = cmd->command;
+		resp->addr      = cmd->addr;
+		resp->reserved  = 0;
+		resp->data_len  = 0;
+		resp->data      = NULL;
+
+		/* Write phase (skip if no data) */
+		if (cmd->data_len > 0) {
+			if (send_buffer_to_slave_global(i2c_addr, cmd->data, cmd->data_len) != 0) {
+				resp->packet_type = OW_ERROR;
+				break;
+			}
+		}
+
+		/* Optional read phase */
+		if (do_read && rx_count > 0) {
+			HAL_Delay(5); /* brief gap between write and read */
+			memset(i2c_passthru_rx, 0, sizeof(i2c_passthru_rx));
+			if (read_raw_from_slave_global(i2c_addr, i2c_passthru_rx, rx_count) != 0) {
+				resp->packet_type = OW_ERROR;
+				break;
+			}
+			resp->data_len = rx_count;
+			resp->data     = i2c_passthru_rx;
+		}
+		break;
+	}
 	default:
 		resp->data_len = 0;
 		resp->reserved = OW_UNKNOWN_ERROR;

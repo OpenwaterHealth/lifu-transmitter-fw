@@ -1594,6 +1594,8 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
     // Stop the timer to prevent re-triggering
     HAL_LPTIM_Counter_Stop_IT(hlptim);
 
+    delay_ms(100);
+
     if (_enter_dfu)
     {
       if (is_custom_bootloader_present() && _force_stm32_dfu == false)
@@ -1610,12 +1612,13 @@ void HAL_LPTIM_AutoReloadMatchCallback(LPTIM_HandleTypeDef *hlptim)
         *((unsigned long *)0x20003FF0) = 0xDEADBEEF;
       }
 
-      MX_USB_DEVICE_DeInit();
-      __DSB();
-      __ISB();
-      delay_ms(200);
-      NVIC_SystemReset();
     }
+
+    MX_USB_DEVICE_DeInit();
+    __DSB();
+    __ISB();
+    delay_ms(200);
+    NVIC_SystemReset();
   }
 }
 

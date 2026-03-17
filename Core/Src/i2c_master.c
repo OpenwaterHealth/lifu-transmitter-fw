@@ -184,6 +184,23 @@ uint8_t read_data_register_of_slave_global(uint8_t slave_addr, uint8_t* pBuffer,
 	return rx_len;
 }
 
+uint8_t read_raw_from_slave_global(uint8_t slave_addr, uint8_t* pBuffer, size_t rx_len)
+{
+    /* Plain I2C read — no register address prefix. Used for the DFU bootloader
+     * at address 0x72, which expects raw HAL_I2C_Master_Receive reads. */
+    if (HAL_I2C_GetState(GLOBAL_I2C_DEVICE) != HAL_I2C_STATE_READY) {
+        printf("===> ERROR I2C Not in ready state (raw read)\r\n");
+        return 1;
+    }
+
+    if (HAL_I2C_Master_Receive(GLOBAL_I2C_DEVICE, (uint16_t)(slave_addr << 1),
+                                pBuffer, (uint16_t)rx_len, HAL_MAX_DELAY) != HAL_OK) {
+        return 2;
+    }
+
+    return 0;
+}
+
 uint16_t I2C_read_CDCE6214_reg(uint8_t i2c_addr, uint16_t reg_addr)
 {
 	uint16_t reg_value = 0x0000;
