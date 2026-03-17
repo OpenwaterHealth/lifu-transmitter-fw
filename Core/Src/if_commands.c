@@ -808,6 +808,40 @@ static void TX7332_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			process_i2c_forward(uartResp, cmd, module_id);
 		}
 		break;
+	case OW_TX7332_RBLOCK:
+		uartResp->command = OW_TX7332_RBLOCK;
+		uartResp->addr = cmd->addr;
+		uartResp->reserved = 0;
+		uartResp->data_len = 0;
+		uartResp->data = NULL;
+		/* Request payload: uint16_t start_addr, uint8_t count, uint8_t reserved */
+		if(cmd->data_len != 4 || cmd->addr >= get_tx_chip_count()){
+			uartResp->packet_type = OW_ERROR;
+			break;
+		}
+
+		module_id = ModuleManager_GetModuleIndex(cmd->addr);
+
+		if(module_id == 0x00) // local
+		{
+			reg_address = cmd->data[0] | (cmd->data[1] << 8);
+			reg_count   = cmd->data[2];
+			if(reg_count == 0 || reg_count > REG_DATA_LEN){
+				uartResp->packet_type = OW_ERROR;
+				break;
+			}
+
+			memset(reg_data_buff, 0, REG_DATA_LEN * sizeof(uint32_t));
+			for(int i = 0; i < reg_count; i++){
+				reg_data_buff[i] = TX7332_ReadReg(&transmitters[cmd->addr], reg_address + i);
+			}
+
+			uartResp->data_len = (uint16_t)(reg_count * sizeof(uint32_t));
+			uartResp->data = (uint8_t*)reg_data_buff;
+		}else{
+			process_i2c_forward(uartResp, cmd, module_id);
+		}
+		break;
 	case OW_TX7332_DEVICE_COUNT:
 	{
 		static uint8_t temp_module_count;
