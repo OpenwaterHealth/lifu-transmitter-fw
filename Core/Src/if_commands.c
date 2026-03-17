@@ -77,10 +77,6 @@ static void process_i2c_read_buffer(UartPacket *uartResp, UartPacket* cmd, uint8
 			} else {
 				uartResp->data_len = 0;
 			}
-		} else if (cmd->command == OW_CMD_USR_CFG) {
-			/* Response size is variable; read the full I2C buffer and let
-			 * i2c_packet_fromBuffer determine the actual payload length. */
-			uartResp->data_len = I2C_BUFFER_SIZE;
 		} else {
 			uartResp->data_len = cmd->data_len;
 		}
@@ -141,7 +137,12 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 		// relay to one of the slaves
 		send_i2c_packet.id = cmd->id;
 		send_i2c_packet.cmd = cmd->command;
-		send_i2c_packet.reserved = (uint8_t)local_tx_idx;
+		/* For TX7332 packets the reserved field carries the local chip index.
+		 * For all other packet types (PING, VERSION, HWID, USR_CFG, etc.) pass
+		 * the original reserved value through so read/write mode is preserved. */
+		send_i2c_packet.reserved = (cmd->packet_type == OW_TX7332)
+		                           ? (uint8_t)local_tx_idx
+		                           : cmd->reserved;
 		send_i2c_packet.data_len = cmd->data_len;
 		send_i2c_packet.pData = cmd->data;
 
@@ -150,8 +151,11 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 		if(send_buffer_to_slave_global(slave_addr, send_buff, send_len) != 0) { // send buffer to slave
 			uartResp->packet_type = OW_ERROR;
 		}else{
+			/* USR_CFG write involves a flash erase+program cycle on the slave
+			 * which can take up to ~300 ms; give it enough time to finish. */
+			uint32_t wait_ms = (cmd->command == OW_CMD_USR_CFG && cmd->reserved == 1) ? 400U : 50U;
 			uint32_t _t0 = HAL_GetTick();
-			while ((HAL_GetTick() - _t0) < 50U) { /* wait for slave to process */ }
+			while ((HAL_GetTick() - _t0) < wait_ms) { /* wait for slave to process */ }
 			process_i2c_read_buffer(uartResp, cmd, module_id);
 		}
 	}	

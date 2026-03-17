@@ -101,7 +101,17 @@ void I2C_Process() {
 	new_cmd.id = data_available->id;
 
 	new_cmd.command = data_available->cmd;
-	new_cmd.addr = data_available->reserved;
+	/* For TX7332 commands data_available->reserved carries the local chip index
+	 * which CONTROLLER/TX7332_ProcessCommand expects in cmd->addr.
+	 * For all other (OW_CMD) commands the slave always processes for itself
+	 * (module 0), so force addr=0 and only put the original reserved value in
+	 * new_cmd.reserved (e.g. 0=READ / 1=WRITE for USR_CFG). */
+	if ((data_available->cmd & 0xF0) == 0x20) {
+		new_cmd.addr = data_available->reserved;  // local TX chip index
+	} else {
+		new_cmd.addr = 0;                          // always self on slave
+	}
+	new_cmd.reserved = data_available->reserved;  // needed by ONE_WIRE handlers (e.g. USR_CFG read/write)
 	new_cmd.data_len = data_available->data_len;
 	new_cmd.data = rec_data_buffer;
 	if(data_available->data_len>0){
@@ -159,11 +169,13 @@ bool set_transmit_buffer(I2C_TX_Packet* packet)
 			ret = i2c_packet_fromBuffer(tx_buffer, packet);
 		}
 	}else{
-		tx_packet.id = 0;
-		tx_packet.cmd = 0;
-		tx_packet.reserved = OW_INVALID_PACKET;
-		tx_packet.pData = NULL;
-		if(i2c_packet_toBuffer(&tx_packet, tx_buffer)>0) ret = true;
+		packet_to_send_to_master.reserved = OW_INVALID_PACKET;
+		packet_to_send_to_master.data_len = 0;
+		packet_to_send_to_master.pData = NULL;
+		if(i2c_packet_toBuffer(&packet_to_send_to_master, tx_buffer)>0) {
+			i2c_packet_fromBuffer(tx_buffer, &packet_to_send_to_master);
+			ret = true;
+		}
 	}
 	if(!ret && packet != NULL){
 		packet->reserved = OW_INVALID_PACKET;
