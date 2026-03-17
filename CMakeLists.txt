@@ -75,11 +75,28 @@ message("Build type: " ${CMAKE_BUILD_TYPE})
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
+# Bootloader build option
+# When ON : FLASH origin=0x08010000, LENGTH=190K, VTOR offset=0x00010000 (uses STM32L443XX_FLASH.ld)
+# When OFF: FLASH origin=0x08000000, LENGTH=256K, no VTOR override   (uses STM32L443RCIX_FLASH.ld)
+option(BOOTLOADER_BUILD "Build firmware to run with bootloader (FLASH @ 0x08010000)" OFF)
+
+if(BOOTLOADER_BUILD)
+    message(STATUS "Bootloader build : FLASH origin=0x08010000, LENGTH=190K, VTOR=0x08010000")
+    set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32L443XX_FLASH.ld")
+else()
+    message(STATUS "Standalone build : FLASH origin=0x08000000, LENGTH=256K")
+    set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/STM32L443RCIX_FLASH.ld")
+endif()
+
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
+
+# Strip the CubeMX-hardcoded linker script so the root can control it conditionally
+# (safe to re-run when CubeMX regenerates cmake/stm32cubemx/CMakeLists.txt)
+string(REGEX REPLACE "-T[^ \"]*|\\-T \"[^\"]*\"" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
 # Link directories setup
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
@@ -127,6 +144,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    $<$<BOOL:${BOOTLOADER_BUILD}>:USER_VECT_TAB_ADDRESS>
 )
 
 # Remove wrong libob.a library dependency when using cpp files
@@ -138,6 +156,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 )
+
+# Linker script (conditional on BOOTLOADER_BUILD)
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-T${LINKER_SCRIPT}")
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES LINK_DEPENDS "${LINKER_SCRIPT}")
 
 # Generate hex and bin files after build
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD

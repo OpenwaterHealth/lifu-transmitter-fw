@@ -17,14 +17,14 @@
 #include <string.h>
 #include <stdbool.h>
 
-#define ONEWIRE_TIMEOUT 1000
-#define TX_TIMEOUT 1000
+#define ONEWIRE_TIMEOUT 500
+#define TX_TIMEOUT 500
 
 // Private variables
 uint8_t rxBuffer[COMMAND_MAX_SIZE];
 uint8_t txBuffer[COMMAND_MAX_SIZE];
-uint8_t owRxBuffer[ONEWIRE_MAX_SIZE];
-uint8_t owTxBuffer[ONEWIRE_MAX_SIZE];
+uint8_t owRxBuffer[COMMAND_MAX_SIZE];
+uint8_t owTxBuffer[COMMAND_MAX_SIZE];
 
 volatile uint32_t ptrReceive;
 volatile uint8_t rx_flag = 0;
@@ -74,7 +74,7 @@ static void buffer_to_packet(uint8_t* pBuffer, UartPacket* pPacket) {
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (pPacket->data_len > COMMAND_MAX_SIZE - bufferIndex && pBuffer[ONEWIRE_MAX_SIZE-1] != OW_END_BYTE) {
+    if (pPacket->data_len > DATA_MAX_SIZE) {
         // Send NACK response due to no end byte
     	pPacket->data_len = 0;
         pPacket->packet_type = OW_ERROR;
@@ -83,28 +83,16 @@ static void buffer_to_packet(uint8_t* pBuffer, UartPacket* pPacket) {
 
     // Extract data pointer
     pPacket->data = &pBuffer[bufferIndex];
-    if (pPacket->data_len > COMMAND_MAX_SIZE)
-    {
-    	bufferIndex=COMMAND_MAX_SIZE-3; // [3 bytes from the end should be the crc for a continuation packet]
-    }else{
-    	bufferIndex += pPacket->data_len; // move pointer to end of data
-    }
-
+    bufferIndex += pPacket->data_len; // move pointer to end of data
+    
     // Extract received CRC
     pPacket->crc = (pBuffer[bufferIndex] << 8 | (pBuffer[bufferIndex+1] & 0xFF ));
     bufferIndex+=2;
 
     // Calculate CRC for received data
 
-    if (pPacket->data_len > COMMAND_MAX_SIZE)
-    {
-    	calculated_crc = util_crc16(&pBuffer[1], COMMAND_MAX_SIZE-3);
-    }
-    else
-    {
-    	calculated_crc = util_crc16(&pBuffer[1], pPacket->data_len + 8);
-    }
-
+    calculated_crc = util_crc16(&pBuffer[1], pPacket->data_len + 8);
+    
     // Check CRC
     if (pPacket->crc != calculated_crc) {
         // Send NACK response due to bad CRC
@@ -406,7 +394,7 @@ void comms_host_check_received(void)
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (cmd.data_len > COMMAND_MAX_SIZE - bufferIndex && rxBuffer[COMMAND_MAX_SIZE-1] != OW_END_BYTE) {
+    if (cmd.data_len > DATA_MAX_SIZE) {
         // Send NACK response due to no end byte
     	// data can exceed buffersize but every buffer must have a start and end packet
     	// command that will send more data than one buffer will follow with data packets to complete the request
@@ -420,27 +408,14 @@ void comms_host_check_received(void)
 
     // Extract data pointer
     cmd.data = &rxBuffer[bufferIndex];
-    if (cmd.data_len > COMMAND_MAX_SIZE)
-    {
-    	bufferIndex=COMMAND_MAX_SIZE-3; // [3 bytes from the end should be the crc for a continuation packet]
-    }else{
-    	bufferIndex += cmd.data_len; // move pointer to end of data
-    }
-
+    bufferIndex += cmd.data_len; // move pointer to end of data
+    
     // Extract received CRC
     cmd.crc = (rxBuffer[bufferIndex] << 8 | (rxBuffer[bufferIndex+1] & 0xFF ));
     bufferIndex+=2;
 
     // Calculate CRC for received data
-
-    if (cmd.data_len > COMMAND_MAX_SIZE)
-    {
-    	calculated_crc = util_crc16(&rxBuffer[1], COMMAND_MAX_SIZE-3);
-    }
-    else
-    {
-    	calculated_crc = util_crc16(&rxBuffer[1], cmd.data_len + 8);
-    }
+  	calculated_crc = util_crc16(&rxBuffer[1], cmd.data_len + 8);
 
     // Check CRC
     if (cmd.crc != calculated_crc) {
@@ -506,7 +481,7 @@ void comms_onewire_check_received()
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE - bufferIndex && owRxBuffer[ONEWIRE_MAX_SIZE-1] != OW_END_BYTE) {
+    if (ow_receive_packet.data_len > DATA_MAX_SIZE) {
         // Send NACK response due to no end byte
     	// data can exceed buffersize but every buffer must have a start and end packet
     	// command that will send more data than one buffer will follow with data packets to complete the request
@@ -520,36 +495,42 @@ void comms_onewire_check_received()
 
     // Extract data pointer
     ow_receive_packet.data = &owRxBuffer[bufferIndex];
-    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE)
-    {
-    	bufferIndex=COMMAND_MAX_SIZE-3; // [3 bytes from the end should be the crc for a continuation packet]
-    }else{
-    	bufferIndex += ow_receive_packet.data_len; // move pointer to end of data
-    }
-
+    bufferIndex += ow_receive_packet.data_len; // move pointer to end of data
+    
     // Extract received CRC
     ow_receive_packet.crc = (owRxBuffer[bufferIndex] << 8 | (owRxBuffer[bufferIndex+1] & 0xFF ));
     bufferIndex+=2;
 
     // Calculate CRC for received data
 
-    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE)
-    {
-    	calculated_crc = util_crc16(&owRxBuffer[1], COMMAND_MAX_SIZE-3);
-    }
-    else
-    {
-    	calculated_crc = util_crc16(&owRxBuffer[1], ow_receive_packet.data_len + 8);
-    }
-
+    calculated_crc = util_crc16(&owRxBuffer[1], ow_receive_packet.data_len + 8);
+    
     // Check CRC
     if (ow_receive_packet.crc != calculated_crc) {
         // Send NACK response due to bad CRC
-    	ow_send_packet.id = ow_send_packet.id;
+    	ow_send_packet.id = ow_receive_packet.id;
     	ow_send_packet.addr = 0;
     	ow_send_packet.reserved = OW_BAD_CRC;
     	ow_send_packet.data_len = 0;
     	ow_send_packet.packet_type = OW_ERROR;
+        goto NextOneWirePacket;
+    }
+
+    // If this slave is already configured, relay discovery packets to the next slave in the chain
+    if (ow_receive_packet.packet_type == OW_ONE_WIRE &&
+        ow_receive_packet.command == OW_CMD_DISCOVERY &&
+        get_configured() && get_module_ID() != 0)
+    {
+        memset((void*)&ow_data_packet, 0, sizeof(ow_data_packet));
+        if (comms_callout_onewire_send(&ow_receive_packet)) {
+            comms_callout_onewire_receive(&ow_data_packet);
+            ow_send_packet = ow_data_packet;
+        } else {
+            ow_send_packet.id = ow_receive_packet.id;
+            ow_send_packet.packet_type = OW_ERROR;
+            ow_send_packet.data_len = 0;
+            ow_send_packet.data = NULL;
+        }
         goto NextOneWirePacket;
     }
 
@@ -658,7 +639,11 @@ bool enumerate_slaves()
 				ModuleManager_AddSlave(next_address);
 				slave_count++;
 				next_address++;  // Move on to the next address.
-
+			}
+			else if (ow_receive_packet.packet_type == OW_TIMEOUT)
+			{
+				// OW_TIMEOUT means the chain ended — no more slaves
+				break;
 			}
 			else
 			{

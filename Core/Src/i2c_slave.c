@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DATA_BUFFER_SIZE 128
+#define DATA_BUFFER_SIZE 2048
 
 uint8_t rx_buffer[I2C_BUFFER_SIZE];
 uint8_t tx_buffer[I2C_BUFFER_SIZE];
@@ -101,7 +101,17 @@ void I2C_Process() {
 	new_cmd.id = data_available->id;
 
 	new_cmd.command = data_available->cmd;
-	new_cmd.addr = data_available->reserved;
+	/* For TX7332 commands data_available->reserved carries the local chip index
+	 * which CONTROLLER/TX7332_ProcessCommand expects in cmd->addr.
+	 * For all other (OW_CMD) commands the slave always processes for itself
+	 * (module 0), so force addr=0 and only put the original reserved value in
+	 * new_cmd.reserved (e.g. 0=READ / 1=WRITE for USR_CFG). */
+	if ((data_available->cmd & 0xF0) == 0x20) {
+		new_cmd.addr = data_available->reserved;  // local TX chip index
+	} else {
+		new_cmd.addr = 0;                          // always self on slave
+	}
+	new_cmd.reserved = data_available->reserved;  // needed by ONE_WIRE handlers (e.g. USR_CFG read/write)
 	new_cmd.data_len = data_available->data_len;
 	new_cmd.data = rec_data_buffer;
 	if(data_available->data_len>0){
@@ -159,13 +169,15 @@ bool set_transmit_buffer(I2C_TX_Packet* packet)
 			ret = i2c_packet_fromBuffer(tx_buffer, packet);
 		}
 	}else{
-		tx_packet.id = packet->id;
-		tx_packet.cmd = packet->cmd;
-		tx_packet.reserved = packet->reserved;
-		tx_packet.pData = NULL;
-		if(i2c_packet_toBuffer(&tx_packet, tx_buffer)>0) ret = true;
+		packet_to_send_to_master.reserved = OW_INVALID_PACKET;
+		packet_to_send_to_master.data_len = 0;
+		packet_to_send_to_master.pData = NULL;
+		if(i2c_packet_toBuffer(&packet_to_send_to_master, tx_buffer)>0) {
+			i2c_packet_fromBuffer(tx_buffer, &packet_to_send_to_master);
+			ret = true;
+		}
 	}
-	if(!ret){
+	if(!ret && packet != NULL){
 		packet->reserved = OW_INVALID_PACKET;
 	}
 	return ret;
@@ -199,7 +211,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		{
 			rx_count = 0;
 			countAddr++;
-			HAL_I2C_Slave_Sequential_Receive_IT(hi2c, rx_buffer + rx_count, 1, I2C_FIRST_FRAME);
+			HAL_I2C_Slave_Sequential_Receive_IT(hi2c, rx_buffer + rx_count, 2, I2C_FIRST_FRAME);
 		}
 	}
 	else
@@ -256,15 +268,16 @@ void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 	if(I2cHandle->Instance == GLOBAL_I2C_DEVICE->Instance) {
 		if(is_first_byte_received == 0)
 		{
-			rx_count++;
+			rx_count += 2;
 			is_first_byte_received = 1;
-			uint8_t bytes_left = rx_buffer[0]-1;
+			uint16_t pkt_len16 = (uint16_t)(rx_buffer[0] | ((uint16_t)rx_buffer[1] << 8));
+			uint16_t bytes_left = pkt_len16 - 2;
 
 			HAL_I2C_Slave_Seq_Receive_IT(I2cHandle, rx_buffer + rx_count, bytes_left, I2C_LAST_FRAME);
 		}
 		else
 		{
-			rx_count = rx_buffer[0];
+			rx_count = (uint16_t)(rx_buffer[0] | ((uint16_t)rx_buffer[1] << 8));
 			is_first_byte_received=0;
 			// process data
 			if (!i2c_packet_fromBuffer(rx_buffer, &rx_packet))

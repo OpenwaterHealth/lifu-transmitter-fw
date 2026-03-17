@@ -12,8 +12,9 @@
 
 #include <stdint.h>
 
-#define COMMAND_MAX_SIZE 384
+#define COMMAND_MAX_SIZE 2080
 #define ONEWIRE_MAX_SIZE 48
+#define DATA_MAX_SIZE 2048
 
 // Configuration: each module has two transmitters; adjust as necessary.
 #define TX_PER_MODULE 2
@@ -109,6 +110,7 @@ typedef enum {
 	OW_TX7332_WBLOCK = 0x24,
 	OW_TX7332_VWREG = 0x25,
 	OW_TX7332_VWBLOCK = 0x26,
+	OW_TX7332_RBLOCK = 0x27,
 	OW_TX7332_DEVICE_COUNT = 0x2C,
 	OW_TX7332_DEMO = 0x2D,
 	OW_TX7332_RESET = 0x2F,
