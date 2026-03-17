@@ -1,6 +1,6 @@
 #include "lifu_config.h"
 
-#include "common.h" // COMMAND_MAX_SIZE for internal wire buffer
+#include "common.h" 
 
 #include <string.h>
 #include <stdbool.h>
@@ -9,7 +9,7 @@
 static lifu_cfg_t g_cfg;
 static bool       g_cfg_loaded = false;
 
-static uint8_t g_cfg_wire_buf[COMMAND_MAX_SIZE];
+static uint8_t g_cfg_wire_buf[DATA_MAX_SIZE];
 
 // ------------------- CRC16-CCITT -------------------
 // CRC-16/CCITT-FALSE: poly=0x1021, init=0xFFFF, no final XOR.

@@ -74,7 +74,7 @@ static void buffer_to_packet(uint8_t* pBuffer, UartPacket* pPacket) {
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (pPacket->data_len > COMMAND_MAX_SIZE - bufferIndex && pBuffer[ONEWIRE_MAX_SIZE-1] != OW_END_BYTE) {
+    if (pPacket->data_len > DATA_MAX_SIZE) {
         // Send NACK response due to no end byte
     	pPacket->data_len = 0;
         pPacket->packet_type = OW_ERROR;
@@ -83,28 +83,16 @@ static void buffer_to_packet(uint8_t* pBuffer, UartPacket* pPacket) {
 
     // Extract data pointer
     pPacket->data = &pBuffer[bufferIndex];
-    if (pPacket->data_len > COMMAND_MAX_SIZE)
-    {
-    	bufferIndex=COMMAND_MAX_SIZE-3; // [3 bytes from the end should be the crc for a continuation packet]
-    }else{
-    	bufferIndex += pPacket->data_len; // move pointer to end of data
-    }
-
+    bufferIndex += pPacket->data_len; // move pointer to end of data
+    
     // Extract received CRC
     pPacket->crc = (pBuffer[bufferIndex] << 8 | (pBuffer[bufferIndex+1] & 0xFF ));
     bufferIndex+=2;
 
     // Calculate CRC for received data
 
-    if (pPacket->data_len > COMMAND_MAX_SIZE)
-    {
-    	calculated_crc = util_crc16(&pBuffer[1], COMMAND_MAX_SIZE-3);
-    }
-    else
-    {
-    	calculated_crc = util_crc16(&pBuffer[1], pPacket->data_len + 8);
-    }
-
+    calculated_crc = util_crc16(&pBuffer[1], pPacket->data_len + 8);
+    
     // Check CRC
     if (pPacket->crc != calculated_crc) {
         // Send NACK response due to bad CRC
@@ -406,7 +394,7 @@ void comms_host_check_received(void)
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (cmd.data_len > COMMAND_MAX_SIZE - bufferIndex && rxBuffer[COMMAND_MAX_SIZE-1] != OW_END_BYTE) {
+    if (cmd.data_len > DATA_MAX_SIZE) {
         // Send NACK response due to no end byte
     	// data can exceed buffersize but every buffer must have a start and end packet
     	// command that will send more data than one buffer will follow with data packets to complete the request
@@ -420,27 +408,14 @@ void comms_host_check_received(void)
 
     // Extract data pointer
     cmd.data = &rxBuffer[bufferIndex];
-    if (cmd.data_len > COMMAND_MAX_SIZE)
-    {
-    	bufferIndex=COMMAND_MAX_SIZE-3; // [3 bytes from the end should be the crc for a continuation packet]
-    }else{
-    	bufferIndex += cmd.data_len; // move pointer to end of data
-    }
-
+    bufferIndex += cmd.data_len; // move pointer to end of data
+    
     // Extract received CRC
     cmd.crc = (rxBuffer[bufferIndex] << 8 | (rxBuffer[bufferIndex+1] & 0xFF ));
     bufferIndex+=2;
 
     // Calculate CRC for received data
-
-    if (cmd.data_len > COMMAND_MAX_SIZE)
-    {
-    	calculated_crc = util_crc16(&rxBuffer[1], COMMAND_MAX_SIZE-3);
-    }
-    else
-    {
-    	calculated_crc = util_crc16(&rxBuffer[1], cmd.data_len + 8);
-    }
+  	calculated_crc = util_crc16(&rxBuffer[1], cmd.data_len + 8);
 
     // Check CRC
     if (cmd.crc != calculated_crc) {
@@ -506,7 +481,7 @@ void comms_onewire_check_received()
     bufferIndex+=2;
 
     // Check if data length is valid
-    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE - bufferIndex && owRxBuffer[ONEWIRE_MAX_SIZE-1] != OW_END_BYTE) {
+    if (ow_receive_packet.data_len > DATA_MAX_SIZE) {
         // Send NACK response due to no end byte
     	// data can exceed buffersize but every buffer must have a start and end packet
     	// command that will send more data than one buffer will follow with data packets to complete the request
@@ -520,28 +495,16 @@ void comms_onewire_check_received()
 
     // Extract data pointer
     ow_receive_packet.data = &owRxBuffer[bufferIndex];
-    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE)
-    {
-    	bufferIndex=COMMAND_MAX_SIZE-3; // [3 bytes from the end should be the crc for a continuation packet]
-    }else{
-    	bufferIndex += ow_receive_packet.data_len; // move pointer to end of data
-    }
-
+    bufferIndex += ow_receive_packet.data_len; // move pointer to end of data
+    
     // Extract received CRC
     ow_receive_packet.crc = (owRxBuffer[bufferIndex] << 8 | (owRxBuffer[bufferIndex+1] & 0xFF ));
     bufferIndex+=2;
 
     // Calculate CRC for received data
 
-    if (ow_receive_packet.data_len > COMMAND_MAX_SIZE)
-    {
-    	calculated_crc = util_crc16(&owRxBuffer[1], COMMAND_MAX_SIZE-3);
-    }
-    else
-    {
-    	calculated_crc = util_crc16(&owRxBuffer[1], ow_receive_packet.data_len + 8);
-    }
-
+    calculated_crc = util_crc16(&owRxBuffer[1], ow_receive_packet.data_len + 8);
+    
     // Check CRC
     if (ow_receive_packet.crc != calculated_crc) {
         // Send NACK response due to bad CRC

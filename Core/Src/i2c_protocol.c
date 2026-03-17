@@ -18,6 +18,7 @@ void i2c_tx_packet_print(const I2C_TX_Packet* packet) {
     printf("Packet Length: 0x%02X\r\n", packet->pkt_len);
     printf("ID: 0x%04X\r\n", packet->id);
     printf("Command (cmd): 0x%02X\r\n", packet->cmd);
+    printf("TX ID: 0x%02X\r\n", packet->tx_id);
     printf("Reserved: 0x%02X\r\n", packet->reserved);
     printf("Data Length: %d\r\n", packet->data_len);
     printf("Data: ");
@@ -44,10 +45,12 @@ bool i2c_packet_fromBuffer(const uint8_t* buffer, I2C_TX_Packet* pTX) {
     buffer += 2;
     pTX->cmd = *buffer; // Command ID
     buffer++;
+    pTX->tx_id = *buffer; // TX ID
+    buffer++;
     pTX->reserved = *buffer; // reserved used currently for passing data
     buffer++;
-    pTX->data_len = *buffer;
-    buffer++;
+    pTX->data_len = (uint16_t)((buffer[1] << 8) | buffer[0]); // Data Length (little-endian)
+    buffer += 2;
     pTX->pData = (uint8_t*)buffer;
     buffer += pTX->data_len;
 
@@ -83,13 +86,18 @@ size_t i2c_packet_toBuffer(I2C_TX_Packet* pTX, uint8_t* buffer) {
     *buffer = pTX->cmd;
     buffer++;
 
+    // Write TX ID
+    *buffer = pTX->tx_id;
+    buffer++;
+
     // Write reserved data
     *buffer = pTX->reserved;
     buffer++;
 
     // Write Data Length
-    *buffer = pTX->data_len;
-    buffer++;
+    buffer[0] = (uint8_t)(pTX->data_len & 0xFF);
+    buffer[1] = (uint8_t)((pTX->data_len >> 8) & 0xFF);
+    buffer += 2;
 
     // Write Data
     if (pTX->pData) {

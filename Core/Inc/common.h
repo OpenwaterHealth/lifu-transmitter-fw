@@ -12,8 +12,9 @@
 
 #include <stdint.h>
 
-#define COMMAND_MAX_SIZE 384
+#define COMMAND_MAX_SIZE 2080
 #define ONEWIRE_MAX_SIZE 48
+#define DATA_MAX_SIZE 2048
 
 // Configuration: each module has two transmitters; adjust as necessary.
 #define TX_PER_MODULE 2

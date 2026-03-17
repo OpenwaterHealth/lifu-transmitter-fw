@@ -13,16 +13,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-
-#define I2C_STATUS_SIZE 8
-#define I2C_BUFFER_SIZE 264
+#define I2C_BUFFER_SIZE 2080
 
 typedef struct {
 	uint8_t pkt_len;
 	uint16_t id;
 	uint8_t cmd;
+	uint8_t tx_id;
 	uint8_t reserved;
-	uint8_t data_len;
+	uint16_t data_len;
 	const uint8_t* pData;
 	uint16_t crc;
 } I2C_TX_Packet;

@@ -77,6 +77,10 @@ static void process_i2c_read_buffer(UartPacket *uartResp, UartPacket* cmd, uint8
 			} else {
 				uartResp->data_len = 0;
 			}
+		} else if (cmd->command == OW_CMD_USR_CFG) {
+			/* Response size is variable; read the full I2C buffer and let
+			 * i2c_packet_fromBuffer determine the actual payload length. */
+			uartResp->data_len = I2C_BUFFER_SIZE;
 		} else {
 			uartResp->data_len = cmd->data_len;
 		}
@@ -127,7 +131,7 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 		uartResp->packet_type = OW_ERROR;
 		uartResp->command = cmd->command;
 	}else {
-		if(cmd->data_len > 0xFFU){
+		if(cmd->data_len > DATA_MAX_SIZE){
 			uartResp->packet_type = OW_ERROR;
 			uartResp->command = cmd->command;
 			uartResp->data_len = 0;
@@ -150,8 +154,7 @@ static void process_i2c_forward(UartPacket *uartResp, UartPacket* cmd, uint8_t m
 			while ((HAL_GetTick() - _t0) < 50U) { /* wait for slave to process */ }
 			process_i2c_read_buffer(uartResp, cmd, module_id);
 		}
-	}
-
+	}	
 }
 
 static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
@@ -239,7 +242,7 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
             if (cmd->reserved == 0) {
                 const uint8_t *wire_buf = NULL;
                 uint16_t wire_len = 0;
-                const uint16_t max_payload = (uint16_t)(COMMAND_MAX_SIZE - 12U); // framing overhead in txBuffer
+                const uint16_t max_payload = (uint16_t)(DATA_MAX_SIZE); 
                 if (lifu_cfg_wire_read(&wire_buf, &wire_len, max_payload) != HAL_OK || wire_buf == NULL) {
                     uartResp->packet_type = OW_ERROR;
                     uartResp->data_len = 0;
@@ -268,7 +271,7 @@ static void ONE_WIRE_ProcessCommand(UartPacket *uartResp, UartPacket *cmd)
                 // Return the updated header as an ACK payload.
                 const uint8_t *wire_buf = NULL;
                 uint16_t wire_len = 0;
-                const uint16_t max_payload = (uint16_t)(COMMAND_MAX_SIZE - 12U);
+                const uint16_t max_payload = (uint16_t)(DATA_MAX_SIZE);
                 if (lifu_cfg_wire_read(&wire_buf, &wire_len, max_payload) != HAL_OK || wire_buf == NULL) {
                     uartResp->packet_type = OW_ERROR;
                     uartResp->data_len = 0;
@@ -493,7 +496,7 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
             if (cmd->reserved == 0) {
                 const uint8_t *wire_buf = NULL;
                 uint16_t wire_len = 0;
-                const uint16_t max_payload = (uint16_t)(COMMAND_MAX_SIZE - 12U); // framing overhead in txBuffer
+                const uint16_t max_payload = (uint16_t)(DATA_MAX_SIZE);
                 if (lifu_cfg_wire_read(&wire_buf, &wire_len, max_payload) != HAL_OK || wire_buf == NULL) {
                     uartResp->packet_type = OW_ERROR;
                     uartResp->data_len = 0;
@@ -522,7 +525,7 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
                 // Return the updated header as an ACK payload.
                 const uint8_t *wire_buf = NULL;
                 uint16_t wire_len = 0;
-                const uint16_t max_payload = (uint16_t)(COMMAND_MAX_SIZE - 12U);
+                const uint16_t max_payload = (uint16_t)(DATA_MAX_SIZE);
                 if (lifu_cfg_wire_read(&wire_buf, &wire_len, max_payload) != HAL_OK || wire_buf == NULL) {
                     uartResp->packet_type = OW_ERROR;
                     uartResp->data_len = 0;
