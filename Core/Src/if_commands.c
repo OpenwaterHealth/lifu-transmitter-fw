@@ -30,6 +30,7 @@ extern bool async_enabled;
 
 static uint32_t id_words[3] = {0};
 static char retTriggerJson[0xFF];
+static uint8_t module_count = 0;
 
 uint8_t send_buff[I2C_BUFFER_SIZE] = {0};
 uint8_t receive_buffer[I2C_BUFFER_SIZE] = {0};
@@ -461,6 +462,13 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			uartResp->addr = cmd->addr;
 			uartResp->reserved = cmd->reserved;
 			uartResp->data_len = 0;
+			
+			if (module_id != 0){
+				// trigger is only on master
+				uartResp->packet_type = OW_ERROR;
+				uartResp->data = NULL;
+				break;
+			}
 
 			if(!set_trigger_data((char *)cmd->data, cmd->data_len))
 			{
@@ -479,16 +487,39 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 			break;
 		case OW_CTRL_GET_SWTRIG:
 			// refresh state
+			uartResp->command = cmd->command;
+			uartResp->addr = cmd->addr;
+			uartResp->reserved = cmd->reserved;
+			
+			if (module_id != 0){
+				// trigger is only on master
+				uartResp->packet_type = OW_ERROR;
+				uartResp->data = NULL;
+				break;
+			}
+
 			if(!get_trigger_data(retTriggerJson, 0xFF))
 			{
 				uartResp->packet_type = OW_ERROR;
 				break;
 			}
-			uartResp->command = cmd->command;
-			uartResp->addr = cmd->addr;
-			uartResp->reserved = cmd->reserved;
+
 			uartResp->data_len = strlen(retTriggerJson);
 			uartResp->data = (uint8_t *)retTriggerJson;
+			break;
+		case OW_CTRL_GET_MODULE_COUNT:
+			uartResp->command = cmd->command;
+			uartResp->addr = cmd->addr;
+
+			if (module_id == 0){
+				module_count = get_module_count();
+				uartResp->data_len = 1;
+				uartResp->data = (uint8_t *)&module_count;
+			}else{
+                uartResp->packet_type = OW_ERROR;
+                uartResp->data_len = 0;
+                uartResp->data = NULL;				
+			}
 			break;
         case OW_CMD_USR_CFG:
 			if (module_id != 0x00)
@@ -586,6 +617,14 @@ static void CONTROLLER_ProcessCommand(UartPacket *uartResp, UartPacket* cmd)
 		case OW_CMD_ASYNC:
 			uartResp->command = cmd->command;
 			uartResp->addr = cmd->addr;
+			
+			if (module_id != 0){
+				// trigger is only on master
+				uartResp->packet_type = OW_ERROR;
+				uartResp->data = NULL;
+				break;
+			}
+			
 			if(cmd->data_len == 1){
 				async_enabled = cmd->data[0] == 1? true: false;
 			}
